@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0.0",
+  "placeholders": {
+    "cpu": "assets/placeholders/cpu.svg",
+    "motherboard": "assets/placeholders/motherboard.svg",
+    "gpu": "assets/placeholders/gpu.svg",
+    "ram": "assets/placeholders/ram.svg",
+    "storage": "assets/placeholders/storage.svg",
+    "psu": "assets/placeholders/psu.svg",
+    "case": "assets/placeholders/case.svg",
+    "cooler": "assets/placeholders/cooler.svg"
+  },
+  "productAssets": [
+    {
+      "provider": "vantaspec",
+      "providerId": "cmsanr0a0000spr2644gk1owy",
+      "manufacturer": "AMD",
+      "model": "Ryzen 7 7800X3D Eight Core 5.0GHz",
+      "mpn": "100-100000910WOF",
+      "category": "cpu",
+      "image": "assets/products/cmsanr0a0000spr2644gk1owy.webp",
+      "gallery": [
+        "assets/products/cmsanr0a0000spr2644gk1owy-detail.webp"
+      ],
+      "galleryDimensions": [
+        {
+          "path": "assets/products/cmsanr0a0000spr2644gk1owy-detail.webp",
+          "width": 1200,
+          "height": 1200
+        }
+      ],
+      "width": 800,
+      "height": 800,
+      "fallback": "assets/placeholders/cpu.svg",
+      "sourceKind": "commons",
+      "rightsStatus": "CC0-1.0",
+      "creator": "FritzchensFritz",
+      "attribution": "FritzchensFritz: AMD@5nmCCD(6nmIOD)@Zen4@Raphael@Ryzen 7 7800X3D@100-000000910 BS 2312PGY 9LW3390030138 DSCx01.jpg (2023-05-14 19:21:19). Wikimedia Commons. CC0-1.0. Changes: resized and converted to WebP; no AI changes.",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:AMD@5nmCCD(6nmIOD)@Zen4@Raphael@Ryzen_7_7800X3D@100-000000910_BS_2312PGY_9LW3390030138_DSCx01.jpg",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licensePath": "licenses/CC0-1.0.txt"
+    },
+    {
+      "provider": "vantaspec",
+      "providerId": "cmsanr0nd004spr26ogvxztp8",
+      "manufacturer": "AMD",
+      "model": "Ryzen 5 7600 Six Core Socket AM5 5.2GHz",
+      "mpn": "100-100001015BOX",
+      "category": "cpu",
+      "image": "assets/products/cmsanr0nd004spr26ogvxztp8.webp",
+      "gallery": [
+        "assets/products/cmsanr0nd004spr26ogvxztp8-detail.webp"
+      ],
+      "galleryDimensions": [
+        {
+          "path": "assets/products/cmsanr0nd004spr26ogvxztp8-detail.webp",
+          "width": 1200,
+          "height": 1200
+        }
+      ],
+      "width": 800,
+      "height": 800,
+      "fallback": "assets/placeholders/cpu.svg",
+      "sourceKind": "commons",
+      "rightsStatus": "FAL-1.3",
+      "creator": "Smial (talk)",
+      "attribution": "Smial (talk): AMD Ryzen 5 7600 top IMGP6773 smial wp.jpg (2023-11-21). Wikimedia Commons. FAL-1.3. Changes: resized and converted to WebP; no AI changes.",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:AMD_Ryzen_5_7600_top_IMGP6773_smial_wp.jpg",
+      "licenseUrl": "https://artlibre.org/licence/lal/en",
+      "licensePath": "licenses/FAL-1.3.txt"
+    },
+    {
+      "provider": "vantaspec",
+      "providerId": "cmsanr0ic0036pr26jfi7p3g9",
+      "manufacturer": "AMD",
+      "model": "Ryzen 5 5600X CPU Six Core 3.7GHz",
+      "mpn": "100-100000065BOX",
+      "category": "cpu",
+      "image": "assets/products/cmsanr0ic0036pr26jfi7p3g9.webp",
+      "gallery": [
+        "assets/products/cmsanr0ic0036pr26jfi7p3g9-detail.webp"
+      ],
+      "galleryDimensions": [
+        {
+          "path": "assets/products/cmsanr0ic0036pr26jfi7p3g9-detail.webp",
+          "width": 1200,
+          "height": 1199
+        }
+      ],
+      "width": 800,
+      "height": 799,
+      "fallback": "assets/placeholders/cpu.svg",
+      "sourceKind": "commons",
+      "rightsStatus": "CC-BY-SA-4.0",
+      "creator": "Phiarc",
+      "attribution": "Phiarc: AMD Ryzen 5 5600X.jpg (2023-12-06 20:44:33). Wikimedia Commons. CC-BY-SA-4.0. Changes: resized and converted to WebP; no AI changes.",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:AMD_Ryzen_5_5600X.jpg",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "licensePath": "licenses/CC-BY-SA-4.0.txt"
+    }
+  ]
+}

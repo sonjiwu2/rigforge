@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <title>RigForge — подбор комплектующих</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="#build">RigForge</a>
+      <nav aria-label="Разделы">
+        <a href="#build" data-nav="build">Сборка</a>
+        <a href="#catalog" data-nav="catalog">Каталог</a>
+        <a href="#saved" data-nav="saved">Сохранённые</a>
+      </nav>
+      <span class="currency">GBP £</span>
+    </header>
+
+    <main id="main">
+      <section id="view-build" data-view="build" aria-label="Сборка"></section>
+      <section id="view-catalog" data-view="catalog" aria-label="Каталог" hidden></section>
+      <section id="view-saved" data-view="saved" aria-label="Сохранённые сборки" hidden></section>
+    </main>
+
+    <div id="status" class="toast-region" aria-live="polite"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

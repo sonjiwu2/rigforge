@@ -1,0 +1,34 @@
+/* Цвета, шрифты и отступы из дизайна */
+:root {
+  --rf-background: #F1F0EB;
+  --rf-surface: #FCFCF9;
+  --rf-text: #182321;
+  --rf-text-secondary: #52605B;
+  --rf-primary: #1B5748;
+  --rf-primary-hover: #144536;
+  --rf-primary-active: #103A2E;
+  --rf-sage: #DFE8DA;
+  --rf-border: #DADDD4;
+  --rf-control-border: #7A877D;
+  --rf-accent: #DFC4AA;
+  --rf-focus: #126280;
+  --rf-error: #983B37;
+  --rf-error-surface: #F9E9E6;
+  --rf-warning: #76501D;
+  --rf-warning-surface: #F5EBD8;
+  --rf-disabled-text: #56635B;
+  --rf-disabled-surface: #E7EAE2;
+  --rf-on-primary: #FCFCF9;
+  --rf-on-primary-secondary: #DFE8DA;
+  --rf-font-body: "Onest", "Segoe UI", Arial, sans-serif;
+  --rf-font-display: "Unbounded", "Onest", "Segoe UI", sans-serif;
+  --rf-space-1: 4px; --rf-space-2: 8px; --rf-space-3: 12px;
+  --rf-space-4: 16px; --rf-space-6: 24px; --rf-space-8: 32px; --rf-space-12: 48px;
+  --rf-radius-control: 8px; --rf-radius-card: 12px; --rf-radius-panel: 16px;
+  --rf-content-max: 1328px; --rf-control-height: 48px; --rf-target-min: 44px;
+  --rf-focus-width: 3px; --rf-focus-offset: 3px;
+  --rf-duration: 120ms; --rf-easing: ease-out;
+  --rf-h1-desktop: 34px; --rf-h1-mobile: 26px; --rf-h2: 22px;
+  --rf-body: 16px; --rf-secondary: 14px; --rf-card-title: 18px;
+}
+@media (prefers-reduced-motion: reduce) { :root { --rf-duration: 0ms; } }
