@@ -3,25 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="RigForge — подбор комплектующих для ПК: сборка, каталог и сохранённые варианты." />
+    <meta name="theme-color" content="#FCFCF9" />
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="stylesheet" href="/src/styles/layout.css" />
     <title>RigForge — подбор комплектующих</title>
   </head>
   <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+
     <header class="site-header">
-      <a class="logo" href="#build">RigForge</a>
-      <nav aria-label="Разделы">
-        <a href="#build" data-nav="build">Сборка</a>
-        <a href="#catalog" data-nav="catalog">Каталог</a>
-        <a href="#saved" data-nav="saved">Сохранённые</a>
-      </nav>
-      <span class="currency">GBP £</span>
+      <div class="site-header__inner">
+        <a class="logo" href="#build">RigForge</a>
+        <nav class="main-nav" aria-label="Разделы">
+          <a class="main-nav__link" href="#build" data-nav="build">Сборка</a>
+          <a class="main-nav__link" href="#catalog" data-nav="catalog">Каталог</a>
+          <a class="main-nav__link" href="#saved" data-nav="saved">Сохранённые</a>
+        </nav>
+        <p class="currency"><span class="visually-hidden">Валюта цен: </span>GBP £</p>
+      </div>
     </header>
 
-    <main id="main">
-      <section id="view-build" data-view="build" aria-label="Сборка"></section>
-      <section id="view-catalog" data-view="catalog" aria-label="Каталог" hidden></section>
-      <section id="view-saved" data-view="saved" aria-label="Сохранённые сборки" hidden></section>
+    <main id="main" class="site-main" tabindex="-1">
+      <section id="view-build" class="view" data-view="build" aria-label="Сборка"></section>
+      <section id="view-catalog" class="view" data-view="catalog" aria-label="Каталог" hidden></section>
+      <section id="view-saved" class="view" data-view="saved" aria-label="Сохранённые сборки" hidden></section>
     </main>
+
+    <footer class="site-footer">
+      <div class="page site-footer__inner">
+        <p>
+          Данные о ценах и характеристиках:
+          <a class="link" href="https://vantaspec.com" target="_blank" rel="noopener noreferrer">VantaSpec<span class="visually-hidden"> (откроется в новой вкладке)</span></a>
+        </p>
+        <p>Описание серий — Wikipedia, CC BY-SA 4.0</p>
+        <p>Сборки хранятся только в этом браузере</p>
+      </div>
+    </footer>
 
     <div id="status" class="toast-region" aria-live="polite"></div>
 
