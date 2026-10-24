@@ -1,7 +1,7 @@
 // Запросы к VantaSpec. Поиск у них без CORS, поэтому список моделей берём из catalog.js,
 // а цены и характеристики — из /api/compare (максимум 4 модели за запрос).
 import { CATALOG_SLUGS, getCategory } from './data/catalog.js';
-import { normalizeCompareResponse } from './products.js';
+import { normalizeCompareResponse, filterProducts, sortProducts } from './products.js';
 
 const COMPARE_URL = 'https://vantaspec.com/api/compare';
 const TIMEOUT_MS = 12000;
@@ -158,4 +158,35 @@ export function loadCategory(categoryId, { signal } = {}) {
     promise.catch(() => categoryCache.delete(categoryId));
   }
   return waitWithSignal(categoryCache.get(categoryId), signal);
+}
+
+// Ищем локально: категория грузится целиком, дальше фильтры и сортировка
+export async function searchProducts(params = {}, { signal } = {}) {
+  const { items } = await loadCategory(params.category, { signal });
+  const filtered = filterProducts(items, params);
+  const sorted = sortProducts(filtered, params.sort || 'relevance');
+  return { items: sorted, total: sorted.length };
+}
+
+// Snapshot из сборки -> полный Product (с магазинами и всеми характеристиками)
+export async function getProductDetails(product, { signal } = {}) {
+  if (Array.isArray(product.offers)) return product;
+
+  const { items } = await loadCategory(product.category, { signal });
+  const found = items.find((item) => item.id === product.id || item.slug === product.slug);
+  if (found) return found;
+
+  // товара уже нет в нашем списке — спросим у VantaSpec отдельно
+  const other = (CATALOG_SLUGS[product.category] || []).find((slug) => slug !== product.slug);
+  if (product.slug && other) {
+    try {
+      const fetched = await fetchCompare([product.slug, other], product.category, { signal });
+      const item = fetched.find((entry) => entry.slug === product.slug);
+      if (item) return item;
+    } catch (err) {
+      // 404 у compare значит «не нашли товар», остальные ошибки отдаём как есть
+      if (!(err instanceof ApiError && err.status === 404)) throw err;
+    }
+  }
+  throw new ApiError('http', 'Этот товар больше не найден в каталоге.', { status: 404 });
 }

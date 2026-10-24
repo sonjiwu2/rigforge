@@ -88,6 +88,8 @@ function specValueToText(value, unit) {
   if (/^(false|no)$/i.test(text)) return 'Нет';
   // '16GB' и '16 GB' должны быть одним значением в фильтрах
   text = text.replace(/(\d)(GB|TB|MB)\b/g, '$1 $2');
+  // у дисков '3000 GB' и '3 TB' — одно и то же
+  text = text.replace(/^(\d+)000 GB$/, '$1 TB');
   if (unit && !text.includes(unit)) text = `${text} ${unit}`;
   return text;
 }
@@ -193,4 +195,96 @@ export function toSnapshot(product) {
     specs,
     priceAsOf: product.priceAsOf,
   };
+}
+
+function normalizeQuery(text) {
+  return String(text || '').toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+// Все слова запроса должны встретиться в названии, бренде, модели или артикуле
+function matchesQuery(product, words) {
+  if (!words.length) return true;
+  const haystack = [product.name, product.manufacturer, product.model, product.mpn]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return words.every((word) => haystack.includes(word));
+}
+
+export function filterProducts(items, filters = {}) {
+  const words = normalizeQuery(filters.query);
+  const brands = filters.brands || [];
+  const specs = filters.specs || {};
+  const priceMin = Number.isInteger(filters.priceMin) ? filters.priceMin : null;
+  const priceMax = Number.isInteger(filters.priceMax) ? filters.priceMax : null;
+
+  return items.filter((product) => {
+    if (!matchesQuery(product, words)) return false;
+    if (brands.length && !brands.includes(product.manufacturer)) return false;
+
+    // при фильтре по цене товары без цены не показываем
+    if (priceMin !== null || priceMax !== null) {
+      if (product.priceMinor === null) return false;
+      if (priceMin !== null && product.priceMinor < priceMin) return false;
+      if (priceMax !== null && product.priceMinor > priceMax) return false;
+    }
+
+    for (const [key, values] of Object.entries(specs)) {
+      if (!Array.isArray(values) || !values.length) continue;
+      if (!values.includes(getSpec(product, key))) return false;
+    }
+    return true;
+  });
+}
+
+export function sortProducts(items, sort = 'relevance') {
+  const list = items.slice();
+  if (sort !== 'price-asc' && sort !== 'price-desc') return list;
+  const direction = sort === 'price-asc' ? 1 : -1;
+  // sort стабильный, поэтому при равной цене остаётся порядок по релевантности
+  return list.sort((a, b) => {
+    if (a.priceMinor === null && b.priceMinor === null) return 0;
+    if (a.priceMinor === null) return 1;
+    if (b.priceMinor === null) return -1;
+    return (a.priceMinor - b.priceMinor) * direction;
+  });
+}
+
+// '500 GB' < '1 TB' < '2 TB', '650W' < '850W', остальное по алфавиту
+function specSortValue(value) {
+  const match = value.match(/^(\d+(?:\.\d+)?)\s*(TB|GB|MB)?/i);
+  if (!match) return null;
+  const multipliers = { tb: 1000, gb: 1, mb: 0.001 };
+  const unit = match[2] ? match[2].toLowerCase() : null;
+  return Number(match[1]) * (unit ? multipliers[unit] : 1);
+}
+
+function compareSpecValues(a, b) {
+  const numA = specSortValue(a);
+  const numB = specSortValue(b);
+  if (numA !== null && numB !== null && numA !== numB) return numA - numB;
+  if (numA !== null && numB === null) return -1;
+  if (numA === null && numB !== null) return 1;
+  return a.localeCompare(b, 'en', { numeric: true });
+}
+
+export function getFilterOptions(items, categoryId) {
+  const category = getCategory(categoryId);
+  const brands = [...new Set(items.map((item) => item.manufacturer).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'en')
+  );
+
+  const specs = {};
+  for (const key of category ? category.filterSpecs : []) {
+    const values = [...new Set(items.map((item) => getSpec(item, key)).filter(Boolean))];
+    if (!values.length) continue;
+    specs[key] = { label: SPEC_LABELS[key] || key, values: values.sort(compareSpecValues) };
+  }
+
+  const prices = items.map((item) => item.priceMinor).filter((price) => price !== null);
+  const priceRange = prices.length
+    ? { min: Math.min(...prices), max: Math.max(...prices) }
+    : { min: null, max: null };
+
+  return { brands, specs, priceRange };
 }
