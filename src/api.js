@@ -190,3 +190,35 @@ export async function getProductDetails(product, { signal } = {}) {
   }
   throw new ApiError('http', 'Этот товар больше не найден в каталоге.', { status: 404 });
 }
+
+const PRICE_STATS_URL = 'https://vantaspec.com/api/products/price-intelligence';
+const priceStatsCache = new Map();
+
+function poundsToMinor(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 100) : null;
+}
+
+// Статистика цен за 90 дней (суммы в пенсах)
+export async function getPriceStats(product, { signal } = {}) {
+  const id = product.providerId;
+  if (priceStatsCache.has(id)) return priceStatsCache.get(id);
+
+  const url = new URL(PRICE_STATS_URL);
+  url.searchParams.set('productId', id);
+  url.searchParams.set('days', '90');
+  const json = await fetchJson(url.toString(), { signal });
+  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+    throw new ApiError('format', 'Сервер вернул данные в непонятном формате.');
+  }
+
+  const stats = {
+    days: Number.isInteger(json.days) ? json.days : 90,
+    currentLowestMinor: poundsToMinor(json.currentLowest),
+    lowestEverMinor: poundsToMinor(json.lowestEver),
+    averageMinor: poundsToMinor(json.averagePrice),
+    retailerCount: Number.isInteger(json.retailerCount) ? json.retailerCount : 0,
+    currency: 'GBP',
+  };
+  priceStatsCache.set(id, stats);
+  return stats;
+}
