@@ -1,0 +1,286 @@
+/* Состояния: загрузка, пусто, ошибка; тосты; скелетон */
+
+/*
+  Разметка:
+  <div class="state state-error" role="alert">
+    <h3 class="state-title">Не удалось загрузить каталог</h3>
+    <p class="state-text">Проверьте соединение и попробуйте ещё раз.</p>
+    <button class="btn btn-secondary" type="button">Повторить</button>
+  </div>
+  Иконка рисуется стилями, вставлять её не нужно.
+*/
+
+:root {
+  --rf-icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 10v7m0-11v1'/%3E%3C/svg%3E");
+  --rf-icon-warning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 10 18H2Zm0 6v5m0 3v1'/%3E%3C/svg%3E");
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px 16px;
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-surface);
+  color: var(--rf-text);
+}
+
+.state-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--rf-font-body);
+  font-size: var(--rf-card-title);
+  line-height: 24px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.state-title::before {
+  content: "";
+  flex: none;
+  width: 24px;
+  height: 24px;
+  background: var(--rf-primary);
+  -webkit-mask: var(--rf-icon-info) center / contain no-repeat;
+  mask: var(--rf-icon-info) center / contain no-repeat;
+}
+
+/* модуль всё-таки вставил свою иконку — не рисуем вторую */
+.state:has(> .icon) .state-title::before,
+.state-title:has(.icon)::before {
+  display: none;
+}
+
+.state > .icon,
+.state-title .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--rf-primary);
+}
+
+.state-text {
+  max-width: 60ch;
+  margin: 0;
+  font-size: var(--rf-body);
+  line-height: 24px;
+  color: var(--rf-text-secondary);
+}
+
+.state > .btn,
+.state-actions {
+  margin-top: 16px;
+}
+
+.state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .state {
+    padding: 24px;
+  }
+
+  .state > .btn {
+    min-width: 200px;
+  }
+}
+
+/* Загрузка: вместо иконки — лёгкий спиннер */
+.state-loading .state-title::before {
+  width: 20px;
+  height: 20px;
+  margin: 2px;
+  border: 2px solid var(--rf-sage);
+  border-top-color: var(--rf-primary);
+  border-radius: 50%;
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  animation: rf-spin 0.8s linear infinite;
+}
+
+/* Ошибка: красный текст на светло-красной подложке + действие */
+.state-error {
+  border-color: #E6C3BE;
+  background: var(--rf-error-surface);
+}
+
+.state-error .state-title {
+  color: var(--rf-error);
+}
+
+.state-error .state-title::before {
+  background: var(--rf-error);
+  -webkit-mask-image: var(--rf-icon-warning);
+  mask-image: var(--rf-icon-warning);
+}
+
+.state-error .state-text {
+  color: var(--rf-text);
+}
+
+.state-error > .icon,
+.state-error .state-title .icon {
+  color: var(--rf-error);
+}
+
+/* Предупреждение (например, бюджет превышен) */
+.state-warning {
+  border-color: #E5D3B3;
+  background: var(--rf-warning-surface);
+}
+
+.state-warning .state-title {
+  color: var(--rf-warning);
+}
+
+.state-warning .state-title::before {
+  background: var(--rf-warning);
+  -webkit-mask-image: var(--rf-icon-warning);
+  mask-image: var(--rf-icon-warning);
+}
+
+.state-warning .state-text {
+  color: var(--rf-text);
+}
+
+/* ---------- Скелетон (только дополнительно к тексту «Загрузка…») ---------- */
+
+.skeleton {
+  display: block;
+  min-height: 1em;
+  border-radius: var(--rf-radius-control);
+  background: var(--rf-border);
+  animation: rf-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes rf-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- Тосты ---------- */
+
+/*
+  <div id="status" class="toast-region" aria-live="polite">
+    <div class="toast">
+      <p class="toast-text">Сборка удалена</p>
+      <button class="toast-action" type="button">Отменить</button>
+    </div>
+  </div>
+*/
+
+.toast-region {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  pointer-events: none;
+}
+
+/* старые сообщения не копятся: показываем не больше трёх последних */
+.toast-region > .toast:not(:nth-last-child(-n + 3)) {
+  display: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-primary-active);
+  color: var(--rf-on-primary);
+  font-size: var(--rf-body);
+  line-height: 24px;
+  font-weight: 500;
+  box-shadow: 0 6px 20px rgba(16, 58, 46, 0.18);
+  pointer-events: auto;
+  animation: rf-toast-in var(--rf-duration) var(--rf-easing);
+}
+
+.toast-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 0;
+}
+
+.toast-action {
+  flex: none;
+  min-height: var(--rf-target-min);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--rf-radius-control);
+  background: transparent;
+  color: var(--rf-on-primary);
+  font-size: var(--rf-body);
+  line-height: 20px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: background-color var(--rf-duration) var(--rf-easing);
+}
+
+.toast-action:hover {
+  background: rgba(252, 252, 249, 0.14);
+}
+
+/* на тёмном фоне синяя обводка не видна — делаем светлую */
+.toast-action:focus-visible {
+  outline-color: var(--rf-on-primary);
+  outline-offset: -3px;
+}
+
+@media (min-width: 600px) {
+  .toast-region {
+    left: auto;
+    right: var(--rf-page-gutter, 24px);
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    width: min(420px, calc(100% - 48px));
+  }
+}
+
+@keyframes rf-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* без анимации — обычная иконка, текст «Загрузка…» остаётся */
+  .state-loading .state-title::before {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--rf-primary);
+    -webkit-mask: var(--rf-icon-info) center / contain no-repeat;
+    mask: var(--rf-icon-info) center / contain no-repeat;
+    animation: none;
+  }
+
+  .skeleton,
+  .toast {
+    animation: none;
+  }
+}
