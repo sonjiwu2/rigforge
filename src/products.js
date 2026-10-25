@@ -197,6 +197,67 @@ export function toSnapshot(product) {
   };
 }
 
+// Значения для фильтров приводим к одному виду (в карточке и окне подробностей specs не меняются).
+// Не распознали — оставляем как есть.
+export function filterValue(key, value, categoryId) {
+  if (value === null || value === undefined) return null;
+  const text = String(value);
+  const lower = text.toLowerCase();
+
+  if (key === 'Form Factor' && categoryId === 'case') {
+    if (lower.includes('full tower')) return 'Full Tower';
+    if (lower.includes('mid tower') || lower.includes('midi tower')) return 'Mid Tower';
+    if (lower.includes('mini tower')) return 'Mini Tower';
+    return text;
+  }
+  if (key === 'Form Factor' && categoryId === 'motherboard') {
+    if (/e-?atx/.test(lower)) return 'E-ATX';
+    if (/mini[\s-]?itx/.test(lower)) return 'Mini-ITX';
+    if (/\bmatx\b|\bm-atx\b|micro[\s-]?atx/.test(lower)) return 'Micro-ATX';
+    if (/\batx\b/.test(lower)) return 'ATX';
+    return text;
+  }
+  if (key === 'Memory' && categoryId === 'gpu') {
+    const match = text.match(/(\d+)\s*GB/i);
+    return match ? `${match[1]} GB` : text;
+  }
+  if (key === 'Type' && categoryId === 'ram') {
+    const match = text.match(/DDR(\d)/i);
+    return match ? `DDR${match[1]}` : text;
+  }
+  if (key === 'Capacity' && categoryId === 'ram') {
+    // '32 GB (2 x 16 GB)' -> общий объём '32 GB'
+    const match = text.match(/^(\d+)\s*GB/i);
+    return match ? `${match[1]} GB` : text;
+  }
+  if (key === 'Type' && categoryId === 'cooler') {
+    if (/aio|all-in-one|liquid|hydro|water/.test(lower)) return 'Жидкостное';
+    if (/\bair\b/.test(lower)) return 'Воздушное';
+    return text;
+  }
+  if (key === 'Modular' && categoryId === 'psu') {
+    if (/semi/.test(lower)) return 'Полумодульный';
+    if (/non|^нет$|^false$/.test(lower)) return 'Немодульный';
+    // просто 'Modular' у VantaSpec — это полностью модульные блоки
+    if (/full|^modular$|^да$/.test(lower)) return 'Полностью модульный';
+    return text;
+  }
+  return text;
+}
+
+// 'WD', 'Western Digital', 'WD_BLACK' и SanDisk с моделью WD Black — один производитель
+export function filterBrand(product) {
+  const brand = product.manufacturer;
+  if (!brand) return null;
+  if (/^(wd|wd_black|western digital)$/i.test(brand)) return 'WD';
+  if (/^sandisk/i.test(brand) && /\bwd\b|wd_black/i.test(`${brand} ${product.model || ''}`)) return 'WD';
+  return brand;
+}
+
+function getFilterSpec(product, key) {
+  return filterValue(key, getSpec(product, key), product.category);
+}
+
 function normalizeQuery(text) {
   return String(text || '').toLowerCase().split(/\s+/).filter(Boolean);
 }
@@ -204,7 +265,7 @@ function normalizeQuery(text) {
 // Все слова запроса должны встретиться в названии, бренде, модели или артикуле
 function matchesQuery(product, words) {
   if (!words.length) return true;
-  const haystack = [product.name, product.manufacturer, product.model, product.mpn]
+  const haystack = [product.name, product.manufacturer, filterBrand(product), product.model, product.mpn]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
@@ -220,7 +281,7 @@ export function filterProducts(items, filters = {}) {
 
   return items.filter((product) => {
     if (!matchesQuery(product, words)) return false;
-    if (brands.length && !brands.includes(product.manufacturer)) return false;
+    if (brands.length && !brands.includes(filterBrand(product))) return false;
 
     // при фильтре по цене товары без цены не показываем
     if (priceMin !== null || priceMax !== null) {
@@ -231,7 +292,7 @@ export function filterProducts(items, filters = {}) {
 
     for (const [key, values] of Object.entries(specs)) {
       if (!Array.isArray(values) || !values.length) continue;
-      if (!values.includes(getSpec(product, key))) return false;
+      if (!values.includes(getFilterSpec(product, key))) return false;
     }
     return true;
   });
@@ -259,24 +320,33 @@ function specSortValue(value) {
   return Number(match[1]) * (unit ? multipliers[unit] : 1);
 }
 
+// модульность — от простого к удобному, а не по алфавиту
+const VALUE_ORDER = ['Немодульный', 'Полумодульный', 'Полностью модульный', 'Mini-ITX', 'Micro-ATX', 'ATX', 'E-ATX', 'Mini Tower', 'Mid Tower', 'Full Tower'];
+
 function compareSpecValues(a, b) {
+  const orderA = VALUE_ORDER.indexOf(a);
+  const orderB = VALUE_ORDER.indexOf(b);
+  if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+  if (orderA !== -1) return -1;
+  if (orderB !== -1) return 1;
+
   const numA = specSortValue(a);
   const numB = specSortValue(b);
   if (numA !== null && numB !== null && numA !== numB) return numA - numB;
   if (numA !== null && numB === null) return -1;
   if (numA === null && numB !== null) return 1;
-  return a.localeCompare(b, 'en', { numeric: true });
+  return a.localeCompare(b, 'ru', { numeric: true });
 }
 
 export function getFilterOptions(items, categoryId) {
   const category = getCategory(categoryId);
-  const brands = [...new Set(items.map((item) => item.manufacturer).filter(Boolean))].sort((a, b) =>
+  const brands = [...new Set(items.map(filterBrand).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b, 'en')
   );
 
   const specs = {};
   for (const key of category ? category.filterSpecs : []) {
-    const values = [...new Set(items.map((item) => getSpec(item, key)).filter(Boolean))];
+    const values = [...new Set(items.map((item) => filterValue(key, getSpec(item, key), categoryId)).filter(Boolean))];
     if (!values.length) continue;
     specs[key] = { label: SPEC_LABELS[key] || key, values: values.sort(compareSpecValues) };
   }
