@@ -1,0 +1,423 @@
+/* Страница «Сохранённые сборки» */
+
+.page-head.saved-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.saved-head-text {
+  min-width: 0;
+}
+
+.saved-title:focus {
+  outline: none;
+}
+
+.saved-title:focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: var(--rf-focus-offset);
+}
+
+.saved-new {
+  flex: 0 0 auto;
+}
+
+.saved-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--rf-warning);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-warning-surface);
+  color: var(--rf-warning);
+  font-weight: 500;
+}
+
+.saved-warning[hidden],
+.saved-search[hidden] {
+  display: none;
+}
+
+.saved-warning .icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.saved-search {
+  max-width: 420px;
+  margin-bottom: 24px;
+}
+
+.saved-search-box {
+  position: relative;
+}
+
+.saved-search-box > .icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: var(--rf-text-secondary);
+  pointer-events: none;
+}
+
+.saved-search-box .input {
+  width: 100%;
+  padding-left: 44px;
+}
+
+/* ---------- Сетка карточек ---------- */
+
+.saved-content .saved-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.saved-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+@media (min-width: 600px) {
+  .saved-content .saved-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .saved-content .saved-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.saved-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-surface);
+}
+
+.saved-card p {
+  margin: 0;
+}
+
+.saved-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.saved-card-name {
+  min-width: 0;
+  margin: 8px 0 0;
+  font-family: var(--rf-font-body);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Меню действий ---------- */
+
+.saved-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  margin: -4px -8px 0 0;
+}
+
+.saved-menu-btn[hidden] {
+  display: none;
+}
+
+.saved-menu-btn[aria-expanded="true"] {
+  background: var(--rf-sage);
+}
+
+.saved-menu-wrap .saved-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 220px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-surface);
+  box-shadow: 0 8px 24px rgba(24, 35, 33, 0.12);
+}
+
+.saved-menu[hidden] {
+  display: none;
+}
+
+.saved-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--rf-radius-control);
+  background: none;
+  color: var(--rf-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-menu button:hover {
+  background: var(--rf-sage);
+}
+
+.saved-menu button:focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: -3px;
+}
+
+.saved-menu button .icon {
+  flex: 0 0 auto;
+  color: var(--rf-text-secondary);
+}
+
+.saved-menu .saved-menu-danger,
+.saved-menu .saved-menu-danger .icon {
+  color: var(--rf-error);
+}
+
+/* ---------- Переименование ---------- */
+
+.saved-rename {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.saved-rename .input {
+  width: 100%;
+}
+
+.saved-rename .field-error {
+  margin-top: 6px;
+}
+
+.saved-rename .field-error[hidden] {
+  display: none;
+}
+
+.saved-rename-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------- Содержимое карточки ---------- */
+
+.saved-card-current {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: var(--rf-sage);
+  color: var(--rf-primary);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.saved-card-current .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.saved-card-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.saved-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  min-height: 64px;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: var(--rf-radius-control);
+  background: var(--rf-background);
+  color: var(--rf-text-secondary);
+}
+
+.saved-tile .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.saved-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.saved-card-empty {
+  color: var(--rf-text-secondary);
+}
+
+.saved-card-parts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.saved-card-part {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.saved-card-part dt {
+  flex: 0 0 auto;
+  color: var(--rf-text-secondary);
+}
+
+.saved-card-part dd {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-align: right;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.saved-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--rf-border);
+}
+
+.saved-card-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.saved-card-count {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.saved-card-sum {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.saved-card-sum-note {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.saved-card-missing,
+.saved-card-date {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--rf-text-secondary);
+}
+
+.saved-open {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ---------- Пустое состояние и плашка про хранение ---------- */
+
+.saved-empty {
+  max-width: 640px;
+}
+
+.saved-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-top: 24px;
+  padding: 20px 24px;
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-sage);
+}
+
+.saved-note p {
+  margin: 0;
+}
+
+.saved-note-title {
+  margin-bottom: 4px !important;
+  font-weight: 600;
+}
+
+.saved-note-text p:last-child {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.saved-download-all[hidden] {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .page-head.saved-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .saved-new,
+  .saved-download-all {
+    width: 100%;
+  }
+
+  .saved-card {
+    padding: 16px;
+  }
+
+  .saved-note {
+    padding: 16px;
+  }
+}
