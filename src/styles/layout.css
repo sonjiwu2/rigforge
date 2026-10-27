@@ -300,3 +300,35 @@ body {
     gap: 8px 32px;
   }
 }
+
+/* Окно подтверждения (новая сборка, открытие другой сборки) */
+.confirm-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--rf-space-6);
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-panel);
+  background: var(--rf-surface);
+  color: var(--rf-text);
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(24 35 33 / 0.45);
+}
+
+.confirm-title {
+  margin: 0 0 var(--rf-space-2);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.confirm-text {
+  margin: 0 0 var(--rf-space-6);
+  color: var(--rf-text-secondary);
+}
+
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--rf-space-3);
+}
