@@ -1,0 +1,560 @@
+/* Сброс, базовая типографика и общие компоненты (кнопки, поля, панель) */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--rf-background);
+  color: var(--rf-text);
+  font-family: var(--rf-font-body);
+  font-size: var(--rf-body);
+  line-height: 24px;
+  font-weight: 400;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6,
+p, figure, blockquote, dl, dd {
+  margin: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--rf-text);
+}
+
+h1 {
+  font-family: var(--rf-font-display);
+  font-size: var(--rf-h1-mobile);
+  line-height: 36px;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: var(--rf-h2);
+  line-height: 30px;
+}
+
+h3 {
+  font-size: var(--rf-card-title);
+  line-height: 24px;
+}
+
+h4, h5, h6 {
+  font-size: var(--rf-body);
+  line-height: 24px;
+}
+
+@media (min-width: 600px) {
+  h1 {
+    font-size: var(--rf-h1-desktop);
+    line-height: 44px;
+  }
+}
+
+/* списки с классом — без маркеров (для меню и сеток карточек) */
+ul[class],
+ol[class] {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+img,
+picture,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--rf-primary);
+  text-underline-offset: 3px;
+}
+
+/* :where — чтобы не перебивать цвет кнопок-ссылок */
+:where(a:hover) {
+  color: var(--rf-primary-hover);
+}
+
+/* Фокус с клавиатуры: 3px, отступ 3px */
+:focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: var(--rf-focus-offset);
+}
+
+/* На тёмно-зелёном фоне перед обводкой нужен светлый зазор */
+.on-primary :focus-visible,
+.btn-primary:focus-visible,
+.btn-light:focus-visible {
+  box-shadow: 0 0 0 var(--rf-focus-offset) var(--rf-surface);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: inherit;
+  vertical-align: middle;
+}
+
+/* Цены везде одной ширины цифр */
+.price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ---------- Кнопки ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--rf-control-height);
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-control);
+  background: transparent;
+  color: var(--rf-primary);
+  font-family: var(--rf-font-body);
+  font-size: var(--rf-body);
+  line-height: 20px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--rf-duration) var(--rf-easing),
+    border-color var(--rf-duration) var(--rf-easing),
+    color var(--rf-duration) var(--rf-easing);
+}
+
+.btn .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-sm {
+  min-height: var(--rf-target-min);
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+/* Кнопка только с иконкой; доступное имя — через aria-label или .visually-hidden */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--rf-target-min);
+  height: var(--rf-target-min);
+  min-height: var(--rf-target-min);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-control);
+  background: transparent;
+  color: var(--rf-text);
+  cursor: pointer;
+  transition:
+    background-color var(--rf-duration) var(--rf-easing),
+    color var(--rf-duration) var(--rf-easing);
+}
+
+.btn-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.btn-icon:hover {
+  background: var(--rf-sage);
+  color: var(--rf-primary-hover);
+}
+
+.btn-icon:active {
+  background: #CFDCC9;
+}
+
+.btn-primary {
+  background: var(--rf-primary);
+  border-color: var(--rf-primary);
+  color: var(--rf-on-primary);
+}
+
+.btn-primary:hover {
+  background: var(--rf-primary-hover);
+  border-color: var(--rf-primary-hover);
+  color: var(--rf-on-primary);
+}
+
+.btn-primary:active {
+  background: var(--rf-primary-active);
+  border-color: var(--rf-primary-active);
+}
+
+.btn-secondary {
+  background: var(--rf-surface);
+  border-color: var(--rf-primary);
+  color: var(--rf-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--rf-sage);
+  color: var(--rf-primary-hover);
+}
+
+.btn-secondary:active {
+  background: #CFDCC9;
+  border-color: var(--rf-primary-active);
+  color: var(--rf-primary-active);
+}
+
+/* Белая кнопка на зелёном блоке */
+.btn-light {
+  background: var(--rf-surface);
+  border-color: var(--rf-surface);
+  color: var(--rf-primary);
+}
+
+.btn-light:hover {
+  background: var(--rf-sage);
+  border-color: var(--rf-sage);
+  color: var(--rf-primary-hover);
+}
+
+.btn-light:active {
+  background: #CFDCC9;
+  border-color: #CFDCC9;
+  color: var(--rf-primary-active);
+}
+
+/* Идёт действие: текст меняет модуль («Сохраняем…»), ширина та же */
+.btn[aria-busy="true"],
+.btn-icon[aria-busy="true"] {
+  cursor: progress;
+}
+
+.btn[aria-busy="true"]::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: rf-spin 0.8s linear infinite;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"],
+.btn-icon:disabled,
+.btn-icon[aria-disabled="true"] {
+  background: var(--rf-disabled-surface);
+  border-color: var(--rf-disabled-surface);
+  color: var(--rf-disabled-text);
+  cursor: not-allowed;
+}
+
+.btn-icon:disabled,
+.btn-icon[aria-disabled="true"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* ---------- Ссылка «Подробнее» ---------- */
+
+.link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rf-primary);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  cursor: pointer;
+  transition: color var(--rf-duration) var(--rf-easing);
+}
+
+.link:hover {
+  color: var(--rf-primary-hover);
+  text-decoration-thickness: 2px;
+}
+
+.link:focus-visible {
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.link .icon {
+  margin-right: 6px;
+}
+
+/* ---------- Поля ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: var(--rf-secondary);
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--rf-text);
+}
+
+.field-hint {
+  font-size: var(--rf-secondary);
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--rf-secondary);
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--rf-error);
+}
+
+.field-error .icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.input,
+.select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--rf-control-height);
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--rf-control-border);
+  border-radius: var(--rf-radius-control);
+  background-color: var(--rf-surface);
+  color: var(--rf-text);
+  font-size: var(--rf-body);
+  line-height: 24px;
+  transition: border-color var(--rf-duration) var(--rf-easing);
+}
+
+.input::placeholder {
+  color: var(--rf-text-secondary);
+  opacity: 1;
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--rf-text);
+}
+
+.input:focus-visible,
+.select:focus-visible {
+  border-color: var(--rf-text);
+  outline-offset: 2px;
+}
+
+.input[aria-invalid="true"],
+.select[aria-invalid="true"] {
+  border-color: var(--rf-error);
+  box-shadow: inset 0 0 0 1px var(--rf-error);
+}
+
+.input:disabled,
+.select:disabled {
+  border-color: var(--rf-disabled-surface);
+  background-color: var(--rf-disabled-surface);
+  color: var(--rf-disabled-text);
+  cursor: not-allowed;
+}
+
+.input[type="number"] {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Свой треугольник у select вместо системного */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 44px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23182321' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 20px 20px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.select::-ms-expand {
+  display: none;
+}
+
+/* Чекбокс: <label class="checkbox"><input type="checkbox"> Текст</label> */
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--rf-target-min);
+  font-size: var(--rf-body);
+  line-height: 24px;
+  color: var(--rf-text);
+  cursor: pointer;
+}
+
+.checkbox input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  display: grid;
+  place-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid var(--rf-control-border);
+  border-radius: 5px;
+  background: var(--rf-surface);
+  cursor: pointer;
+  transition:
+    background-color var(--rf-duration) var(--rf-easing),
+    border-color var(--rf-duration) var(--rf-easing);
+}
+
+.checkbox input[type="radio"] {
+  border-radius: 50%;
+}
+
+.checkbox input::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: var(--rf-on-primary);
+  /* галочка вырезана маской, чтобы отметка была видна не только цветом */
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 9%, 37% 72%);
+  transform: scale(0);
+  transition: transform var(--rf-duration) var(--rf-easing);
+}
+
+.checkbox input[type="radio"]::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  clip-path: none;
+}
+
+.checkbox:hover input:not(:disabled) {
+  border-color: var(--rf-text);
+}
+
+.checkbox input:checked {
+  background: var(--rf-primary);
+  border-color: var(--rf-primary);
+}
+
+.checkbox input:checked::before {
+  transform: scale(1);
+}
+
+.checkbox input:focus-visible {
+  outline-offset: 2px;
+}
+
+.checkbox input:disabled {
+  border-color: var(--rf-disabled-text);
+  background: var(--rf-disabled-surface);
+  cursor: not-allowed;
+}
+
+.checkbox:has(input:disabled) {
+  color: var(--rf-disabled-text);
+  cursor: not-allowed;
+}
+
+/* ---------- Поверхность ---------- */
+
+.panel {
+  padding: 16px;
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-surface);
+}
+
+@media (min-width: 600px) {
+  .panel {
+    padding: 24px;
+  }
+}
+
+@keyframes rf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn[aria-busy="true"]::before {
+    display: none;
+  }
+}
