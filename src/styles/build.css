@@ -1,0 +1,694 @@
+/* Страница «Сборка»: список деталей и панель стоимости */
+
+.page-head.build-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.build-name {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.build-name-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--rf-text-secondary);
+}
+
+/* Поле названия выглядит как заголовок страницы */
+.build-name-input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 0 -8px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-control);
+  background: transparent;
+  color: var(--rf-text);
+  font-family: var(--rf-font-display);
+  font-weight: 600;
+  font-size: var(--rf-h1-desktop);
+  line-height: 44px;
+  text-overflow: ellipsis;
+  transition: border-color var(--rf-duration) var(--rf-easing), background-color var(--rf-duration) var(--rf-easing);
+}
+
+.build-name-input:hover {
+  border-color: var(--rf-border);
+}
+
+.build-name-input:focus {
+  border-color: var(--rf-control-border);
+  background: var(--rf-surface);
+}
+
+.build-name-input:focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: var(--rf-focus-offset);
+}
+
+.build-name-input[aria-invalid="true"] {
+  border-color: var(--rf-error);
+}
+
+.build-name .field-error {
+  margin: 4px 0 0;
+}
+
+.build-new {
+  flex: 0 0 auto;
+}
+
+.build-storage-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--rf-warning);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-warning-surface);
+  color: var(--rf-warning);
+  font-weight: 500;
+}
+
+.build-storage-warning[hidden] {
+  display: none;
+}
+
+.build-storage-warning .icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+/* Сетка: на телефоне и планшете стоимость над списком, на desktop — справа */
+.build-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.build-side {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .build-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: "parts side";
+  }
+
+  .build-side {
+    grid-area: side;
+    position: sticky;
+    top: 24px;
+  }
+
+  .build-parts {
+    grid-area: parts;
+  }
+}
+
+/* ---------- Панель стоимости ---------- */
+
+.build-summary {
+  padding: 24px;
+  border-radius: var(--rf-radius-panel);
+  background: var(--rf-primary);
+  color: var(--rf-on-primary);
+}
+
+.build-summary p {
+  margin: 0;
+}
+
+.build-summary-title {
+  margin: 0;
+  color: inherit;
+  font-family: var(--rf-font-display);
+  font-weight: 600;
+  font-size: var(--rf-h2);
+  line-height: 30px;
+}
+
+.build-summary-count {
+  margin-top: 4px !important;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-on-primary-secondary);
+}
+
+.build-summary-total {
+  margin-top: 16px;
+}
+
+.build-total-label,
+.build-total-missing {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-on-primary-secondary);
+}
+
+.build-total-value {
+  font-size: 34px;
+  line-height: 42px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  overflow-wrap: anywhere;
+}
+
+.build-total-mixed {
+  margin-top: 4px !important;
+  font-weight: 600;
+}
+
+.build-budget {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(223, 232, 218, 0.35);
+}
+
+.build-budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.build-budget-label {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.build-budget-input {
+  width: 140px;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--rf-on-primary-secondary);
+  border-radius: var(--rf-radius-control);
+  background: transparent;
+  color: var(--rf-on-primary);
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: right;
+}
+
+.build-budget-input::placeholder {
+  color: var(--rf-on-primary-secondary);
+  opacity: 0.8;
+}
+
+/* На зелёном фоне перед кольцом фокуса нужен светлый зазор */
+.build-summary :focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: var(--rf-focus-offset);
+  box-shadow: 0 0 0 var(--rf-focus-offset) var(--rf-on-primary);
+}
+
+.build-budget-input[aria-invalid="true"] {
+  border-color: var(--rf-error-surface);
+  border-width: 2px;
+}
+
+.build-budget-error,
+.build-budget-over {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px !important;
+  padding: 8px 12px;
+  border-radius: var(--rf-radius-control);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.build-budget-error {
+  background: var(--rf-error-surface);
+  color: var(--rf-error);
+}
+
+.build-budget-error[hidden] {
+  display: none;
+}
+
+.build-budget-over {
+  background: var(--rf-warning-surface);
+  color: var(--rf-warning);
+}
+
+.build-budget-over .icon {
+  flex: 0 0 auto;
+}
+
+.build-progress {
+  height: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(223, 232, 218, 0.3);
+}
+
+.build-progress[hidden] {
+  display: none;
+}
+
+.build-progress-bar {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: 4px;
+  background: var(--rf-on-primary);
+  transition: width var(--rf-duration) var(--rf-easing);
+}
+
+.build-progress.is-over .build-progress-bar {
+  background: var(--rf-warning-surface);
+}
+
+.build-budget-left,
+.build-budget-hint {
+  margin-top: 12px !important;
+  font-size: 16px;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.build-budget-hint {
+  color: var(--rf-on-primary-secondary);
+}
+
+.build-save {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.build-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--rf-on-primary);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.build-download span {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.build-download:hover span {
+  text-decoration-thickness: 2px;
+}
+
+.build-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.build-note .icon {
+  flex: 0 0 auto;
+}
+
+/* На планшете панель широкая — делим её на две половины */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .build-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "title budget"
+      "count budget"
+      "total budget"
+      "total save"
+      "total download";
+    column-gap: 32px;
+    align-items: start;
+  }
+
+  .build-summary-title { grid-area: title; }
+  .build-summary-count { grid-area: count; }
+  .build-summary-total { grid-area: total; }
+
+  .build-budget {
+    grid-area: budget;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .build-save { grid-area: save; }
+  .build-download { grid-area: download; justify-self: start; }
+}
+
+/* ---------- Список комплектующих ---------- */
+
+.build-parts {
+  min-width: 0;
+  padding: 0 0 8px;
+}
+
+.build-parts-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 16px;
+}
+
+.build-parts-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.build-parts-count {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.build-parts .build-list {
+  container: parts / inline-size;
+  margin: 0;
+  padding: 0 16px;
+  list-style: none;
+}
+
+.build-list p {
+  margin: 0;
+}
+
+/* Строка детали. По умолчанию — телефонная раскладка, шире — через container query */
+.build-row {
+  display: grid;
+  /* у крестика своя колонка 44px, поэтому он не наезжает на название */
+  grid-template-columns: 56px minmax(0, 1fr) auto 44px;
+  grid-template-areas:
+    "art   info  info    remove"
+    "price price replace replace"
+    "more  more  replace replace";
+  column-gap: 12px;
+  row-gap: 4px;
+  min-height: 164px;
+  padding: 16px 4px;
+  border-top: 1px solid var(--rf-border);
+}
+
+.build-row-art { grid-area: art; }
+.build-row-info { grid-area: info; }
+.build-row-remove { grid-area: remove; }
+.build-row-replace { grid-area: replace; }
+.build-row-choose { grid-area: choose; }
+
+.build-row-price-box {
+  display: contents;
+}
+
+.build-row-price { grid-area: price; }
+.build-row-more { grid-area: more; }
+
+.build-row-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--rf-radius-control);
+  background: var(--rf-background);
+  color: var(--rf-text-secondary);
+}
+
+button.build-row-art {
+  cursor: pointer;
+}
+
+.build-row-art .icon {
+  width: 28px;
+  height: 28px;
+}
+
+.build-row-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.build-row-info {
+  min-width: 0;
+  align-self: start;
+}
+
+.build-row-category {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.build-row-name {
+  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.build-row-name-btn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.build-row-name-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.build-row-name-btn:focus-visible,
+button.build-row-art:focus-visible {
+  outline: var(--rf-focus-width) solid var(--rf-focus);
+  outline-offset: var(--rf-focus-offset);
+}
+
+.build-row-specs {
+  margin-top: 4px !important;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.build-row-price {
+  align-self: end;
+  margin-top: 12px !important;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.build-row-price-unknown {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--rf-text-secondary);
+}
+
+.build-row-more {
+  justify-self: start;
+  align-self: start;
+}
+
+.build-row-replace {
+  align-self: center;
+  justify-self: end;
+  min-width: 112px;
+}
+
+.build-row-remove {
+  align-self: start;
+  justify-self: end;
+  margin: -10px -8px 0 0;
+}
+
+.build-row-none {
+  margin-top: 2px !important;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--rf-text-secondary);
+}
+
+/* Пустой слот — одна линия: иконка, категория, «Выбрать» */
+.build-row-empty {
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-areas: "art info choose";
+  align-items: center;
+  min-height: 88px;
+}
+
+.build-row-empty .build-row-art {
+  background: transparent;
+  border: 1px dashed var(--rf-control-border);
+}
+
+.build-row-empty .build-row-info {
+  align-self: center;
+}
+
+.build-row-choose {
+  min-width: 112px;
+}
+
+/* Планшет и desktop 1024: фото 64, «Подробнее» и «Заменить» на второй линии */
+@container parts (min-width: 480px) {
+  .build-row {
+    grid-template-columns: 64px minmax(0, 1fr) auto 44px;
+    grid-template-areas:
+      "art info price   remove"
+      "art more replace replace";
+    column-gap: 20px;
+    row-gap: 8px;
+    min-height: 132px;
+    padding: 20px 4px;
+  }
+
+  .build-row-art {
+    width: 64px;
+    height: 64px;
+  }
+
+  .build-row-name {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .build-row-price {
+    align-self: start;
+    justify-self: end;
+    margin-top: 0 !important;
+    text-align: right;
+  }
+
+  .build-row-more {
+    align-self: center;
+  }
+
+  .build-row-remove {
+    align-self: start;
+    margin: -10px 0 0;
+  }
+
+  .build-row-empty {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas: "art info choose";
+    min-height: 104px;
+  }
+}
+
+/* Широкий список: всё в одну линию, цена в своей колонке */
+@container parts (min-width: 720px) {
+  .build-row {
+    grid-template-columns: 72px minmax(0, 1fr) minmax(96px, auto) 112px 44px;
+    grid-template-areas: "art info prices replace remove";
+    align-items: center;
+    min-height: 104px;
+    padding: 16px 4px;
+  }
+
+  .build-row-art {
+    width: 72px;
+    height: 72px;
+  }
+
+  .build-row-price-box {
+    display: flex;
+    grid-area: prices;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .build-row-more {
+    align-self: flex-end;
+  }
+
+  .build-row-remove {
+    align-self: center;
+    margin: 0;
+  }
+
+  .build-row-empty {
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    grid-template-areas: "art info choose";
+  }
+}
+
+/* ---------- Телефон ---------- */
+@media (max-width: 599px) {
+  .page-head.build-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .build-name {
+    flex: 0 0 auto;
+  }
+
+  .build-name-input {
+    font-size: var(--rf-h1-mobile);
+    line-height: 36px;
+  }
+
+  .build-new {
+    width: 100%;
+  }
+
+  .build-summary {
+    padding: 20px;
+  }
+
+  .build-parts-head {
+    padding: 16px 16px 12px;
+  }
+
+  .build-parts .build-list {
+    padding: 0 12px;
+  }
+}
