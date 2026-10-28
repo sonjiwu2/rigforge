@@ -1,12 +1,22 @@
-// Форматирование цен и чисел. Все суммы в приложении хранятся в пенсах (целые числа).
+// Форматирование цен и чисел. Все суммы хранятся в минорных единицах (пенсы, центы, копейки),
+// цены товаров — всегда в пенсах GBP.
+import { CURRENCIES } from './currency.js';
 
 const formatters = new Map();
 
 function getFormatter(currency) {
   if (!formatters.has(currency)) {
+    const info = CURRENCIES[currency];
+    // рубли показываем без копеек: «12 345 ₽»
+    const digits = info ? info.digits : 2;
     formatters.set(
       currency,
-      new Intl.NumberFormat('en-GB', { style: 'currency', currency })
+      new Intl.NumberFormat(info ? info.locale : 'en-GB', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      })
     );
   }
   return formatters.get(currency);
@@ -25,10 +35,43 @@ export function formatMoney(priceMinor, currency = 'GBP') {
   }
 }
 
-// '1200', '1200.5', '1 200,50', '£1,200.00' -> пенсы. Всё остальное -> null.
+// money = state.money: { currency, rates: { GBP: 1, USD, RUB } | null }
+function getRate(money) {
+  if (!money || !money.currency || money.currency === 'GBP' || !money.rates) return null;
+  const rate = money.rates[money.currency];
+  return typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+// Пенсы -> минорные единицы выбранной валюты. Курса нет — остаёмся в фунтах.
+export function convertFromGbp(minorGbp, money) {
+  const rate = getRate(money);
+  if (minorGbp === null || minorGbp === undefined || !Number.isFinite(minorGbp)) {
+    return { minor: null, currency: rate ? money.currency : 'GBP' };
+  }
+  if (!rate) return { minor: Math.round(minorGbp), currency: 'GBP' };
+  return { minor: Math.round(minorGbp * rate), currency: money.currency };
+}
+
+// Обратно: сумма в выбранной валюте (например, бюджет из поля ввода) -> пенсы
+export function convertToGbp(minor, money) {
+  if (minor === null || minor === undefined || !Number.isFinite(minor)) return null;
+  const rate = getRate(money);
+  if (!rate) return Math.round(minor);
+  return Math.round(minor / rate);
+}
+
+export function formatPrice(minorGbp, money) {
+  if (minorGbp === null || minorGbp === undefined || !Number.isFinite(minorGbp)) {
+    return 'Цена не указана';
+  }
+  const converted = convertFromGbp(minorGbp, money);
+  return formatMoney(converted.minor, converted.currency);
+}
+
+// '1200', '1200.5', '1 200,50', '£1,200.00', '$99', '12 345 ₽' -> минорные единицы. Всё остальное -> null.
 export function parseMoneyInput(text) {
   if (text === null || text === undefined) return null;
-  let s = String(text).replace(/[£\s  ]/g, '');
+  let s = String(text).replace(/[£$₽\s  ]/g, '');
   if (s === '' || s.includes('-')) return null;
 
   // запятая — десятичный разделитель, только если после неё 1–2 цифры в конце и точки нет
