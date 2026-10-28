@@ -589,7 +589,7 @@ function updateStatus(view, catalog) {
     const error = catalog.error || {};
     const isRate = error.kind === 'rate' || (error.retryAfter !== null && error.retryAfter !== undefined);
     const title = isRate ? 'Слишком много запросов. Попробуйте позже' : 'Не удалось загрузить каталог';
-    let text = isRate ? '' : 'Проверьте соединение и попробуйте ещё раз.';
+    let text = isRate ? '' : error.message || 'Попробуйте ещё раз.';
     if (isRate && error.retryAfter) text = `Повторить можно примерно через ${error.retryAfter} с.`;
     const canRetry = error.canRetry !== false;
     node = makeState('error', title, text, canRetry ? 'Повторить' : '', 'retry');
