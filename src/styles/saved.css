@@ -276,6 +276,11 @@
   height: 32px;
 }
 
+.saved-tile:has(img) {
+  border: 1px solid var(--rf-border);
+  background: #FFFFFF;
+}
+
 .saved-tile img {
   display: block;
   width: 100%;
@@ -345,7 +350,7 @@
   font-size: 22px;
   line-height: 28px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums;
 }
 
 .saved-card-sum-note {
@@ -393,6 +398,13 @@
 }
 
 .saved-note-text p:last-child {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--rf-text-secondary);
+}
+
+.saved-rate-note {
+  margin: 4px 0 0;
   font-size: 14px;
   line-height: 20px;
   color: var(--rf-text-secondary);

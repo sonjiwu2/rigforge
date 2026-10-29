@@ -1,8 +1,9 @@
 import './styles/saved.css';
 import { CATEGORIES } from './data/catalog.js';
-import { formatMoney } from './format.js';
 import { icon } from './icons.js';
-import { calculateBuildTotals, countText, escapeHtml } from './build.js';
+import {
+  calculateBuildTotals, countText, escapeHtml, formatRateDate, getDisplayCurrency, handleImageError, priceText,
+} from './build.js';
 
 const NAME_MAX = 80;
 const SEARCH_FROM = 4; // поиск нужен, только если сборок больше трёх
@@ -32,19 +33,21 @@ function keyParts(build) {
 
 function tile({ category, part }, callbacks) {
   const art = callbacks.getArtwork?.(part);
+  const fallback = art?.fallbackSrc ? ` data-fallback="${escapeHtml(art.fallbackSrc)}"` : '';
   const inner = art && art.src && art.isPlaceholder === false
-    ? `<img src="${escapeHtml(art.src)}" alt="" loading="lazy" decoding="async">`
+    ? `<img src="${escapeHtml(art.src)}" alt=""${fallback} referrerpolicy="no-referrer" loading="lazy" decoding="async">`
     : icon(category.icon);
-  return `<span class="saved-tile">${inner}</span>`;
+  return `<span class="saved-tile" data-slot="${category.id}">${inner}</span>`;
 }
 
-function totalsBlock(build) {
+// Итог считаем в пенсах, в выбранную валюту переводим только готовую сумму
+function totalsBlock(build, money) {
   const totals = calculateBuildTotals(build);
   let total;
   if (totals.mixedCurrencies) {
     total = '<span class="saved-card-sum saved-card-sum-note">Цены в разных валютах</span>';
   } else {
-    total = `<span class="saved-card-sum">${escapeHtml(formatMoney(totals.knownTotalMinor, totals.currency))}</span>`;
+    total = `<span class="saved-card-sum">${escapeHtml(priceText(totals.knownTotalMinor, totals.currency, money))}</span>`;
   }
   const missing = totals.unknownCount > 0
     ? `<p class="saved-card-missing">Сумма известных позиций. Для ${countText(totals.unknownCount, DETAIL_FORMS_GENITIVE)} цена не указана</p>`
@@ -118,7 +121,7 @@ function card(build, index, state, ui, callbacks) {
       ${tiles}
       ${rows}
       <div class="saved-card-foot">
-        ${totalsBlock(build)}
+        ${totalsBlock(build, state.money)}
         <p class="saved-card-date">Сохранено <time datetime="${escapeHtml(build.savedAt)}">${escapeHtml(dateFormat.format(savedAt))}</time></p>
         <button class="btn btn-primary saved-open" type="button" data-action="open" data-focus="open">Открыть сборку<span class="visually-hidden"> «${name}»</span></button>
       </div>
@@ -132,6 +135,7 @@ function createSkeleton(container) {
         <div class="saved-head-text">
           <h1 class="page-title saved-title" tabindex="-1">Сохранённые сборки</h1>
           <p class="page-sub saved-count"></p>
+          <p class="saved-rate-note" hidden></p>
         </div>
         <button class="btn btn-secondary saved-new" type="button">${icon('plus')}<span>Новая сборка</span></button>
       </div>
@@ -160,6 +164,7 @@ function createSkeleton(container) {
   const refs = {
     title: container.querySelector('.saved-title'),
     count: container.querySelector('.saved-count'),
+    rateNote: container.querySelector('.saved-rate-note'),
     warning: container.querySelector('.saved-warning'),
     search: container.querySelector('.saved-search'),
     searchInput: container.querySelector('#saved-search-input'),
@@ -181,6 +186,12 @@ function createSkeleton(container) {
   });
 
   refs.content.addEventListener('click', (event) => onContentClick(refs, event));
+  refs.content.addEventListener('error', (event) => {
+    handleImageError(event, (holder) => {
+      const category = CATEGORIES.find((item) => item.id === holder.dataset.slot);
+      return category ? icon(category.icon) : '';
+    });
+  }, true);
   refs.content.addEventListener('keydown', (event) => onContentKeydown(refs, event));
   refs.content.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -420,6 +431,12 @@ export function renderSaved(container, state, callbacks = {}) {
   const saved = state.saved || [];
   refs.count.textContent = saved.length ? countText(saved.length, BUILD_FORMS) : '';
   refs.count.hidden = !saved.length;
+
+  // цены сохранены в фунтах, при другой валюте пишем, по какому курсу пересчитали
+  const converted = saved.length > 0 && getDisplayCurrency(state.money) !== 'GBP';
+  const date = converted ? formatRateDate(state.money.date) : null;
+  refs.rateNote.textContent = converted ? `Суммы пересчитаны по курсу ${date ? 'на ' + date : 'на сегодня'}` : '';
+  refs.rateNote.hidden = !converted;
 
   refs.warning.hidden = !state.storageWarning;
   refs.warning.innerHTML = state.storageWarning

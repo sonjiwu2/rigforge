@@ -1,7 +1,7 @@
 // Скачивание списка комплектующих: одна сборка в .txt, все сохранённые в .json
 import { CATEGORIES } from './data/catalog.js';
-import { formatMoney, pluralRu } from './format.js';
-import { calculateBuildTotals } from './build.js';
+import { convertFromGbp, formatMoney, formatPrice, pluralRu } from './format.js';
+import { budgetInCurrency, calculateBuildTotals, formatRateDate, getDisplayCurrency } from './build.js';
 
 const SOURCE_TEXT = 'Источник цен: VantaSpec (vantaspec.com), цены на момент добавления в сборку';
 const DETAIL_FORMS_GENITIVE = ['детали', 'деталей', 'деталей'];
@@ -37,14 +37,31 @@ function saveFile(content, fileName, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function buildToText(build, createdAt = new Date()) {
+// Цена в выбранной валюте, а в скобках — исходная в фунтах, если валюта другая
+function priceWithGbp(minor, currency, money) {
+  if (currency && currency !== 'GBP') return formatMoney(minor, currency);
+  const text = formatPrice(minor, money);
+  if (minor === null || minor === undefined || getDisplayCurrency(money) === 'GBP') return text;
+  return `${text} (${formatMoney(minor, 'GBP')})`;
+}
+
+// «1 GBP = 1,3385 USD на 30.10.2026 (Currency-api)» или null, если валюта — фунты
+function rateLine(money) {
+  const currency = getDisplayCurrency(money);
+  if (currency === 'GBP') return null;
+  const rate = money.rates[currency].toLocaleString('ru-RU', { maximumFractionDigits: 6 });
+  const date = formatRateDate(money.date);
+  return `Курс: 1 GBP = ${rate} ${currency}${date ? ' на ' + date : ''} (Currency-api)`;
+}
+
+export function buildToText(build, money = null, createdAt = new Date()) {
   const totals = calculateBuildTotals(build);
   const lines = [build.name, 'Список комплектующих RigForge', ''];
 
   for (const category of CATEGORIES) {
     const part = build.slots[category.id];
     if (!part) continue;
-    lines.push(`${category.slotTitle}: ${part.name} — ${formatMoney(part.priceMinor, part.currency)}`);
+    lines.push(`${category.slotTitle}: ${part.name} — ${priceWithGbp(part.priceMinor, part.currency, money)}`);
   }
   if (!totals.count) lines.push('Детали не выбраны');
   lines.push('');
@@ -52,15 +69,17 @@ export function buildToText(build, createdAt = new Date()) {
   if (totals.mixedCurrencies) {
     lines.push('Итого: цены в разных валютах, общая сумма не считается');
   } else {
-    lines.push(`Итого известных позиций: ${formatMoney(totals.knownTotalMinor, totals.currency)}`);
+    lines.push(`Итого известных позиций: ${priceWithGbp(totals.knownTotalMinor, totals.currency, money)}`);
   }
   if (totals.unknownCount > 0) {
     lines.push(`Цена не указана для ${totals.unknownCount} ${pluralRu(totals.unknownCount, DETAIL_FORMS_GENITIVE)}`);
   }
   lines.push(build.budgetMinor === null || build.budgetMinor === undefined
     ? 'Бюджет: не указан'
-    : `Бюджет: ${formatMoney(build.budgetMinor, build.currency)}`);
+    : `Бюджет: ${budgetText(build.budgetMinor, money)}`);
   lines.push('');
+  const rate = rateLine(money);
+  if (rate) lines.push(rate);
   lines.push(SOURCE_TEXT);
   lines.push(`Файл создан: ${dateFormat.format(createdAt)}`);
 
@@ -68,13 +87,20 @@ export function buildToText(build, createdAt = new Date()) {
   return lines.join('\r\n') + '\r\n';
 }
 
-export function downloadBuild(build) {
+// бюджет показываем так же, как в поле на странице сборки
+function budgetText(budgetMinor, money) {
+  const shown = budgetInCurrency(budgetMinor, money);
+  const text = formatMoney(shown.minor, shown.currency);
+  return shown.currency === 'GBP' ? text : `${text} (${formatMoney(budgetMinor, 'GBP')})`;
+}
+
+export function downloadBuild(build, money = null) {
   // BOM помогает старым редакторам понять, что файл в UTF-8
-  const text = '﻿' + buildToText(build);
+  const text = '﻿' + buildToText(build, money);
   saveFile(text, safeFileName(build.name, 'rigforge-build') + '.txt', 'text/plain;charset=utf-8');
 }
 
-function buildToJson(build) {
+function buildToJson(build, money) {
   const totals = calculateBuildTotals(build);
   const parts = [];
   for (const category of CATEGORIES) {
@@ -90,6 +116,7 @@ function buildToJson(build) {
       priceMinor: part.priceMinor,
       currency: part.currency,
       price: formatMoney(part.priceMinor, part.currency),
+      priceConverted: priceConverted(part.priceMinor, part.currency, money),
       priceAsOf: part.priceAsOf ?? null,
       specs: part.specs || [],
       sourceUrl: part.slug ? `https://vantaspec.com/products/${part.slug}` : null,
@@ -100,12 +127,16 @@ function buildToJson(build) {
     name: build.name,
     currency: build.currency,
     budgetMinor: build.budgetMinor,
+    budgetConverted: build.budgetMinor === null || build.budgetMinor === undefined || getDisplayCurrency(money) === 'GBP'
+      ? null
+      : budgetText(build.budgetMinor, money),
     savedAt: build.savedAt ?? null,
     updatedAt: build.updatedAt ?? null,
     totals: {
       count: totals.count,
       knownTotalMinor: totals.knownTotalMinor,
       knownTotal: totals.mixedCurrencies ? null : formatMoney(totals.knownTotalMinor, totals.currency),
+      knownTotalConverted: totals.mixedCurrencies ? null : priceConverted(totals.knownTotalMinor, totals.currency, money),
       unknownCount: totals.unknownCount,
       mixedCurrencies: totals.mixedCurrencies,
     },
@@ -113,8 +144,16 @@ function buildToJson(build) {
   };
 }
 
-export function downloadAllBuilds(builds) {
+// В JSON цены остаются в пенсах GBP, пересчёт — отдельной строкой (null, если валюта — фунты)
+function priceConverted(minor, currency, money) {
+  if (minor === null || minor === undefined || (currency && currency !== 'GBP')) return null;
+  const converted = convertFromGbp(minor, money);
+  return converted.currency === 'GBP' ? null : formatMoney(converted.minor, converted.currency);
+}
+
+export function downloadAllBuilds(builds, money = null) {
   const createdAt = new Date();
+  const currency = getDisplayCurrency(money);
   const data = {
     app: 'RigForge',
     title: 'Список комплектующих RigForge',
@@ -125,7 +164,10 @@ export function downloadAllBuilds(builds) {
       url: 'https://vantaspec.com',
       note: 'цены на момент добавления в сборку',
     },
-    builds: (builds || []).map(buildToJson),
+    exchange: currency === 'GBP'
+      ? null
+      : { from: 'GBP', to: currency, rate: money.rates[currency], date: money.date ?? null, source: 'Currency-api' },
+    builds: (builds || []).map((build) => buildToJson(build, money)),
   };
   const day = createdAt.toISOString().slice(0, 10);
   saveFile(JSON.stringify(data, null, 2), `rigforge-builds-${day}.json`, 'application/json;charset=utf-8');

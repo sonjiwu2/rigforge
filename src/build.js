@@ -1,6 +1,7 @@
 import './styles/build.css';
 import { CATEGORIES, getCategory } from './data/catalog.js';
-import { formatMoney, parseMoneyInput, pluralRu } from './format.js';
+import { convertFromGbp, convertToGbp, formatMoney, formatPrice, parseMoneyInput, pluralRu } from './format.js';
+import { CURRENCIES } from './currency.js';
 import { icon } from './icons.js';
 
 // пустую сборку создаёт storage.js (он не должен тянуть за собой стили и разметку)
@@ -54,22 +55,103 @@ export function calculateBuildTotals(build) {
   };
 }
 
+// В какой валюте реально выводим цены: без курса остаёмся в фунтах
+export function getDisplayCurrency(money) {
+  return convertFromGbp(0, money).currency;
+}
+
+// Цена детали или итог. Данные в пенсах GBP, переводим только при выводе.
+export function priceText(minor, currency, money) {
+  if (!currency || currency === 'GBP') return formatPrice(minor, money);
+  return formatMoney(minor, currency);
+}
+
+// Рубли выводим без копеек, поэтому и считаем остаток в целых рублях,
+// иначе «бюджет − итог» на экране разойдётся с остатком на 1 ₽
+function roundForDisplay(minor, currency) {
+  const digits = CURRENCIES[currency]?.digits ?? 2;
+  return digits === 0 ? Math.round(minor / 100) * 100 : minor;
+}
+
+function trailingZeros(value) {
+  let count = 0;
+  while (value > 0 && value % 10 === 0 && count < 12) {
+    value /= 10;
+    count++;
+  }
+  return count;
+}
+
+// Бюджет хранится в пенсах. Человек ввёл, например, 100 000 ₽ — после перевода в фунты
+// и обратно получилось бы 100 025 ₽. Поэтому показываем самое «круглое» число,
+// которое переводится ровно в те же пенсы. typed — то, что ввели в этой вкладке.
+export function budgetInCurrency(budgetMinor, money, typed = null) {
+  const converted = convertFromGbp(budgetMinor, money);
+  if (converted.minor === null || converted.currency === 'GBP') return converted;
+  if (typed && typed.currency === converted.currency && convertToGbp(typed.minor, money) === budgetMinor) {
+    return { minor: typed.minor, currency: typed.currency };
+  }
+  const rate = money.rates[converted.currency];
+  const from = Math.floor((budgetMinor - 0.5) * rate) - 1;
+  const to = Math.ceil((budgetMinor + 0.5) * rate) + 1;
+  let best = converted.minor;
+  for (let minor = Math.max(from, 1); minor <= to; minor++) {
+    if (convertToGbp(minor, money) !== budgetMinor) continue;
+    const better = trailingZeros(minor) - trailingZeros(best)
+      || Math.abs(best - converted.minor) - Math.abs(minor - converted.minor);
+    if (better > 0) best = minor;
+  }
+  return { minor: best, currency: converted.currency };
+}
+
+// '2026-10-30' -> '30.10.2026'
+export function formatRateDate(date) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : null;
+}
+
+export function rateNote(money) {
+  if (getDisplayCurrency(money) === 'GBP') return '';
+  const date = formatRateDate(money.date);
+  return date ? `≈ по курсу на ${date}` : '≈ по текущему курсу';
+}
+
 // Подсказки по бюджету: остаток или превышение. Пока сумма неполная — остаток не считаем.
-function getBudgetInfo(build, totals) {
+// Сравниваем суммы в той валюте, которую видит пользователь.
+function getBudgetInfo(build, totals, money, typed) {
   if (build.budgetMinor === null || build.budgetMinor === undefined) return { kind: 'none' };
   if (totals.mixedCurrencies || totals.unknownCount > 0) return { kind: 'incomplete' };
   if (totals.currency !== build.currency) return { kind: 'incomplete' };
-  const diff = build.budgetMinor - totals.knownTotalMinor;
+  const budget = budgetInCurrency(build.budgetMinor, money, typed);
+  const total = convertFromGbp(totals.knownTotalMinor, money);
+  const budgetValue = roundForDisplay(budget.minor, budget.currency);
+  const totalValue = roundForDisplay(total.minor, total.currency);
+  const diff = budgetValue - totalValue;
   const percent = Math.min(100, Math.max(0, Math.round((totals.knownTotalMinor / build.budgetMinor) * 100)));
-  return diff >= 0 ? { kind: 'left', diff, percent } : { kind: 'over', diff: -diff, percent: 100 };
+  const currency = budget.currency;
+  return diff >= 0 ? { kind: 'left', diff, percent, currency } : { kind: 'over', diff: -diff, percent: 100, currency };
 }
 
 function partArtwork(part, callbacks, category) {
   const art = callbacks.getArtwork?.(part);
   if (art && art.src && art.isPlaceholder === false) {
-    return `<img src="${escapeHtml(art.src)}" alt="${escapeHtml(art.alt || part.name)}" loading="lazy" decoding="async">`;
+    const fallback = art.fallbackSrc ? ` data-fallback="${escapeHtml(art.fallbackSrc)}"` : '';
+    return `<img src="${escapeHtml(art.src)}" alt="${escapeHtml(art.alt || part.name)}"${fallback} referrerpolicy="no-referrer" loading="lazy" decoding="async">`;
   }
   return icon(category.icon);
+}
+
+// Фото не загрузилось: один раз ставим запасную картинку, иначе иконку категории
+export function handleImageError(event, getIcon) {
+  const img = event.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  if (img.dataset.fallback && !img.dataset.failed) {
+    img.dataset.failed = '1';
+    img.src = img.dataset.fallback;
+    return;
+  }
+  const holder = img.parentElement;
+  holder.innerHTML = getIcon(holder) || '';
 }
 
 function partSpecs(part) {
@@ -79,11 +161,11 @@ function partSpecs(part) {
   return `<p class="build-row-specs">${escapeHtml(text)}</p>`;
 }
 
-function filledRow(category, part, callbacks) {
+function filledRow(category, part, callbacks, money) {
   const name = escapeHtml(part.name);
   const hasPrice = Number.isSafeInteger(part.priceMinor);
   const price = hasPrice
-    ? `<p class="build-row-price">${escapeHtml(formatMoney(part.priceMinor, part.currency))}</p>`
+    ? `<p class="build-row-price">${escapeHtml(priceText(part.priceMinor, part.currency, money))}</p>`
     : '<p class="build-row-price build-row-price-unknown">Цена не указана</p>';
   return `
     <li class="build-row" data-slot="${category.id}">
@@ -139,6 +221,7 @@ function createSkeleton(container) {
             <h2 class="build-summary-title" id="build-summary-title">Стоимость</h2>
             <p class="build-summary-count"></p>
             <div class="build-summary-total"></div>
+            <p class="build-rate-note" hidden></p>
             <div class="build-budget">
               <div class="build-budget-row">
                 <label class="build-budget-label" for="build-budget-input">Бюджет</label>
@@ -171,6 +254,8 @@ function createSkeleton(container) {
     warning: container.querySelector('.build-storage-warning'),
     count: container.querySelector('.build-summary-count'),
     total: container.querySelector('.build-summary-total'),
+    rateNote: container.querySelector('.build-rate-note'),
+    budgetLabel: container.querySelector('.build-budget-label'),
     budgetInput: container.querySelector('.build-budget-input'),
     budgetError: container.querySelector('#build-budget-error'),
     progress: container.querySelector('.build-progress'),
@@ -182,6 +267,7 @@ function createSkeleton(container) {
     list: container.querySelector('.build-list'),
     callbacks: {},
     state: null,
+    typedBudget: null,
   };
 
   // обработчики вешаем один раз, а свежие callbacks/state берём из refs
@@ -210,6 +296,14 @@ function createSkeleton(container) {
   refs.newButton.addEventListener('click', () => refs.callbacks.onNewBuild?.());
   refs.saveButton.addEventListener('click', () => refs.callbacks.onSave?.());
   refs.downloadButton.addEventListener('click', () => refs.callbacks.onDownload?.());
+
+  // error не всплывает, поэтому ловим на этапе погружения
+  refs.list.addEventListener('error', (event) => {
+    handleImageError(event, (holder) => {
+      const category = getCategory(holder.closest('.build-row')?.dataset.slot);
+      return category ? icon(category.icon) : '';
+    });
+  }, true);
 
   refs.list.addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
@@ -264,21 +358,32 @@ function commitBudget(refs) {
     if (refs.state.build.budgetMinor !== null) refs.callbacks.onBudgetChange?.(null);
     return;
   }
+  // сумма вводится в выбранной валюте, а хранится в пенсах
+  const money = refs.state.money;
+  const currency = getDisplayCurrency(money);
   const value = parseMoneyInput(text);
-  if (value === null || value <= 0) {
+  const valueGbp = value === null ? null : convertToGbp(value, money);
+  if (value === null || value <= 0 || !(valueGbp > 0)) {
     showError(refs.budgetInput, refs.budgetError, 'Введите сумму больше нуля');
     return;
   }
   showError(refs.budgetInput, refs.budgetError, '');
-  if (value !== refs.state.build.budgetMinor) refs.callbacks.onBudgetChange?.(value);
+  refs.typedBudget = { minor: value, currency };
+  if (valueGbp !== refs.state.build.budgetMinor) refs.callbacks.onBudgetChange?.(valueGbp);
+  else fillBudgetInput(refs);
 }
 
 function fillBudgetInput(refs) {
   const budget = refs.state.build.budgetMinor;
-  refs.budgetInput.value = budget === null || budget === undefined ? '' : formatMoney(budget, refs.state.build.currency);
+  if (budget === null || budget === undefined) {
+    refs.budgetInput.value = '';
+    return;
+  }
+  const shown = budgetInCurrency(budget, refs.state.money, refs.typedBudget);
+  refs.budgetInput.value = formatMoney(shown.minor, shown.currency);
 }
 
-function renderSummary(refs, build, totals) {
+function renderSummary(refs, build, totals, money) {
   refs.count.textContent = totals.count
     ? `Выбрано ${countText(totals.count, DETAIL_FORMS)}`
     : 'Детали пока не выбраны';
@@ -294,11 +399,19 @@ function renderSummary(refs, build, totals) {
       : '';
     refs.total.innerHTML = `
       ${label}
-      <p class="build-total-value">${escapeHtml(formatMoney(totals.knownTotalMinor, totals.currency))}</p>
+      <p class="build-total-value">${escapeHtml(priceText(totals.knownTotalMinor, totals.currency, money))}</p>
       ${missing}`;
   }
 
-  const budget = getBudgetInfo(build, totals);
+  // при другой валюте честно пишем, что сумма пересчитана
+  const note = totals.count && !totals.mixedCurrencies ? rateNote(money) : '';
+  refs.rateNote.textContent = note;
+  refs.rateNote.hidden = !note;
+
+  const currency = getDisplayCurrency(money);
+  refs.budgetLabel.textContent = `Бюджет, ${CURRENCIES[currency]?.symbol || currency}`;
+
+  const budget = getBudgetInfo(build, totals, money, refs.typedBudget);
   refs.progress.hidden = budget.kind !== 'left' && budget.kind !== 'over';
   refs.progressBar.style.width = `${budget.percent ?? 0}%`;
   refs.progress.classList.toggle('is-over', budget.kind === 'over');
@@ -308,10 +421,10 @@ function renderSummary(refs, build, totals) {
   } else if (budget.kind === 'incomplete') {
     refs.budgetStatus.innerHTML = '<p class="build-budget-hint">Остаток появится, когда у всех деталей будет цена</p>';
   } else if (budget.kind === 'left') {
-    refs.budgetStatus.innerHTML = `<p class="build-budget-left">Остаётся ${escapeHtml(formatMoney(budget.diff, build.currency))}</p>`;
+    refs.budgetStatus.innerHTML = `<p class="build-budget-left">Остаётся ${escapeHtml(formatMoney(budget.diff, budget.currency))}</p>`;
   } else {
     refs.budgetStatus.innerHTML = `
-      <p class="build-budget-over">${icon('warning')}<span>Бюджет превышен на ${escapeHtml(formatMoney(budget.diff, build.currency))}</span></p>`;
+      <p class="build-budget-over">${icon('warning')}<span>Бюджет превышен на ${escapeHtml(formatMoney(budget.diff, budget.currency))}</span></p>`;
   }
 }
 
@@ -345,6 +458,7 @@ export function renderBuild(container, state, callbacks = {}) {
   // открыли другую сборку — старые ошибки ввода больше не нужны
   if (refs.buildId !== build.id) {
     refs.buildId = build.id;
+    refs.typedBudget = null;
     showError(refs.nameInput, refs.nameError, '');
     showError(refs.budgetInput, refs.budgetError, '');
   }
@@ -362,13 +476,13 @@ export function renderBuild(container, state, callbacks = {}) {
     ? `${icon('warning')}<span>${escapeHtml(state.storageWarning)}</span>`
     : '';
 
-  renderSummary(refs, build, totals);
+  renderSummary(refs, build, totals, state.money);
   refs.partsCount.textContent = countText(totals.count, POSITION_FORMS);
 
   const focus = rememberFocus(refs.list);
   refs.list.innerHTML = CATEGORIES.map((category) => {
     const part = build.slots[category.id];
-    return part ? filledRow(getCategory(category.id), part, callbacks) : emptyRow(category);
+    return part ? filledRow(getCategory(category.id), part, callbacks, state.money) : emptyRow(category);
   }).join('');
   restoreFocus(refs.list, focus);
 }
