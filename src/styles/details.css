@@ -65,10 +65,12 @@ html:has(.details-dialog[open]) { overflow: hidden; }
   align-items: center;
   justify-content: center;
   gap: var(--rf-space-2);
-  aspect-ratio: 512 / 300;
+  aspect-ratio: 3 / 2;
   min-height: 180px;
-  padding: var(--rf-space-2);
-  background: var(--rf-background);
+  padding: var(--rf-space-4);
+  /* фото магазинов сняты на белом */
+  background: #FFFFFF;
+  border: 1px solid var(--rf-border);
   border-radius: var(--rf-radius-card);
   overflow: hidden;
 }
@@ -80,7 +82,11 @@ html:has(.details-dialog[open]) { overflow: hidden; }
   object-fit: contain;
   object-position: 50% 50%;
 }
-.details-photo.is-placeholder { aspect-ratio: 2 / 1; }
+.details-photo.is-placeholder {
+  aspect-ratio: 2 / 1;
+  background: var(--rf-background);
+  border-color: transparent;
+}
 .details-photo img.is-placeholder { width: 88px; height: 88px; flex: none; }
 .details-nophoto { color: var(--rf-text-secondary); font-size: var(--rf-secondary); }
 
@@ -147,8 +153,15 @@ html:has(.details-dialog[open]) { overflow: hidden; }
 .details-price {
   margin: var(--rf-space-3) 0 0;
   font: 600 28px/36px var(--rf-font-body);
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums;
 }
+.details-price-note {
+  margin: 2px 0 0;
+  color: var(--rf-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.details-price-note[hidden] { display: none; }
 .details-price.is-unknown { color: var(--rf-text-secondary); font-size: 18px; line-height: 28px; }
 .details-price-from { font-size: var(--rf-body); font-weight: 500; color: var(--rf-text-secondary); }
 

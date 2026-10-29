@@ -191,13 +191,20 @@
   align-items: center;
   justify-content: center;
   gap: var(--rf-space-2);
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 3 / 2;
   min-height: 166px;
-  padding: var(--rf-space-2);
-  background: var(--rf-background);
+  padding: var(--rf-space-3);
+  /* фото магазинов сняты на белом — подложка тоже белая */
+  background: #FFFFFF;
+  border: 1px solid var(--rf-border);
   border-radius: var(--rf-radius-control);
   cursor: pointer;
   overflow: hidden;
+}
+.product-card-photo.is-placeholder,
+.product-card-photo:has(img.is-placeholder) {
+  background: var(--rf-background);
+  border-color: transparent;
 }
 .product-card-photo img {
   display: block;
@@ -257,7 +264,8 @@
 .product-card-price {
   margin: var(--rf-space-3) 0 0;
   font: 600 22px/28px var(--rf-font-body);
-  font-variant-numeric: tabular-nums lining-nums;
+  /* обычные цифры: у Onest в tabular-nums «1» слишком широкая */
+  font-variant-numeric: lining-nums;
 }
 .product-card-price.is-unknown {
   color: var(--rf-text-secondary);
@@ -272,14 +280,25 @@
 }
 .product-card-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--rf-space-3);
   margin-top: auto;
   padding-top: var(--rf-space-3);
 }
-.product-card-cta { gap: var(--rf-space-2); }
+.product-card-more { flex: none; white-space: nowrap; }
+/* у «В сборку», «В сборке» и «Заменить» одна ширина и высота */
+.product-card-cta {
+  position: relative;
+  flex: none;
+  gap: var(--rf-space-2);
+  min-width: 132px;
+  min-height: 44px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+.product-card-cta .icon { width: 20px; height: 20px; }
+.product-card-cta-text { line-height: 20px; }
 .product-card-cta.is-in-build,
 .product-card-cta.is-in-build[aria-disabled="true"] {
   background: var(--rf-sage);
@@ -316,14 +335,14 @@
 .catalog-buildbar-total {
   margin: 0;
   font: 600 var(--rf-body)/24px var(--rf-font-body);
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums;
 }
 .catalog-buildbar-sub {
   margin: 2px 0 0;
   color: var(--rf-on-primary-secondary);
   font-size: var(--rf-secondary);
   line-height: 20px;
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums;
 }
 .catalog-buildbar-sub[hidden] { display: none; }
 .catalog-buildbar-btn { flex: none; min-width: 140px; }

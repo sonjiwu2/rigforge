@@ -1,7 +1,7 @@
 import './styles/details.css';
 import { getCategory } from './data/catalog.js';
 import { icon } from './icons.js';
-import { formatMoney } from './format.js';
+import { formatMoney, formatPrice, convertFromGbp } from './format.js';
 import { getProductDetails, getPriceStats, isAbortError } from './api.js';
 import { getSupplementaryInfo } from './enrichment.js';
 import { createProductImage } from './assets.js';
@@ -42,7 +42,13 @@ function isFullProduct(product) {
   return Array.isArray(product.offers);
 }
 
-export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
+// '2026-10-30' -> '30.10.2026'
+function formatRateDate(date) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
+}
+
+export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney } = {}) {
   const dialog = el('dialog', 'details-dialog');
   dialog.setAttribute('aria-labelledby', 'details-title');
   dialog.innerHTML = `
@@ -60,6 +66,7 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
         <h2 class="details-title" id="details-title"></h2>
         <p class="details-mpn"></p>
         <p class="details-price"></p>
+        <p class="details-price-note" hidden></p>
         <div class="details-tabs" role="tablist" aria-label="Сведения о детали">
           <button type="button" role="tab" class="details-tab" id="details-tab-specs" aria-controls="details-panel-specs" aria-selected="true">Характеристики</button>
           <button type="button" role="tab" class="details-tab" id="details-tab-desc" aria-controls="details-panel-desc" aria-selected="false" tabindex="-1">Описание</button>
@@ -101,6 +108,7 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     title: $('.details-title'),
     mpn: $('.details-mpn'),
     price: $('.details-price'),
+    priceNote: $('.details-price-note'),
     tabs: [...dialog.querySelectorAll('[role="tab"]')],
     panels: [$('#details-panel-specs'), $('#details-panel-desc')],
     specs: $('.details-specs'),
@@ -120,6 +128,11 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
   let token = 0;
   let seriesRequested = false;
   let photoKey = '';
+  let stats = null;
+
+  function money() {
+    return (typeof getMoney === 'function' && getMoney()) || null;
+  }
 
   // ---------- шапка, фото, цена ----------
 
@@ -138,6 +151,11 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
       art = made.art;
       parts.photo.replaceChildren(made.img);
       parts.photo.classList.toggle('is-placeholder', art.isPlaceholder);
+      // фото не загрузилось и заменилось заглушкой — подпись к нему уже не нужна
+      made.img.addEventListener('error', () => {
+        parts.photo.classList.add('is-placeholder');
+        parts.credit.replaceChildren();
+      }, { once: true });
       if (art.isPlaceholder) {
         const note = el('span', 'details-nophoto', 'Фото отсутствует');
         note.setAttribute('aria-hidden', 'true');
@@ -152,14 +170,28 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     parts.mpn.textContent = mpn ? `MPN: ${mpn}` : '';
     parts.mpn.hidden = !mpn;
 
+    renderPrice();
+  }
+
+  function renderPrice() {
     parts.price.replaceChildren();
+    parts.priceNote.hidden = true;
     if (product.priceMinor === null || product.priceMinor === undefined) {
       parts.price.classList.add('is-unknown');
       parts.price.textContent = 'Цена не указана';
-    } else {
-      parts.price.classList.remove('is-unknown');
-      if (product.priceKind === 'from') parts.price.append(el('span', 'details-price-from', 'от '));
-      parts.price.append(document.createTextNode(formatMoney(product.priceMinor, product.currency)));
+      return;
+    }
+    parts.price.classList.remove('is-unknown');
+    if (product.priceKind === 'from') parts.price.append(el('span', 'details-price-from', 'от '));
+    parts.price.append(document.createTextNode(formatPrice(product.priceMinor, money())));
+
+    // цена пересчитана — показываем, по какому курсу и сколько в магазине на самом деле
+    const current = money();
+    if (convertFromGbp(product.priceMinor, current).currency !== 'GBP') {
+      const date = formatRateDate(current.date);
+      const rate = date ? `≈ по курсу на ${date}` : '≈ по текущему курсу';
+      parts.priceNote.textContent = `${rate}, в магазине ${formatMoney(product.priceMinor, 'GBP')}`;
+      parts.priceNote.hidden = false;
     }
   }
 
@@ -169,11 +201,15 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     const box = el('details', 'details-credit-box');
     box.append(el('summary', 'details-credit-toggle', 'Фото и лицензия'));
     const body = el('div', 'details-credit-body');
-    if (art.attribution) body.append(el('p', '', art.attribution));
+    if (art.sourceKind === 'vantaspec') {
+      body.append(el('p', '', 'Фото: VantaSpec, права у производителя.'));
+    } else if (art.attribution) {
+      body.append(el('p', '', art.attribution));
+    }
     const list = el('dl', 'details-credit-list');
     const rows = [
       ['Автор', art.creator],
-      ['Лицензия', art.rightsStatus],
+      ['Лицензия', art.sourceKind === 'vantaspec' ? null : art.rightsStatus],
     ];
     for (const [term, value] of rows) {
       if (!value) continue;
@@ -181,7 +217,9 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     }
     body.append(list);
     const links = el('p', 'details-credit-links');
-    if (art.sourceUrl && isHttpUrl(art.sourceUrl)) links.append(externalLink('Источник фото', art.sourceUrl));
+    if (art.sourceUrl && isHttpUrl(art.sourceUrl)) {
+      links.append(externalLink(art.sourceKind === 'vantaspec' ? 'Страница товара на VantaSpec' : 'Источник фото', art.sourceUrl));
+    }
     if (art.licenseUrl && isHttpUrl(art.licenseUrl)) links.append(externalLink('Лицензия', art.licenseUrl));
     if (art.licenseFileUrl) links.append(externalLink('Текст лицензии', art.licenseFileUrl));
     body.append(links);
@@ -222,7 +260,11 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     for (const offer of offers) {
       const item = el('li', 'details-offer');
       item.append(el('span', 'details-offer-shop', offer.retailer || 'Магазин'));
-      item.append(el('span', 'details-offer-price', formatMoney(offer.priceMinor, offer.currency)));
+      // цены магазинов в фунтах, пересчитываем в выбранную валюту
+      const offerPrice = offer.currency && offer.currency !== 'GBP'
+        ? formatMoney(offer.priceMinor, offer.currency)
+        : formatPrice(offer.priceMinor, money());
+      item.append(el('span', 'details-offer-price', offerPrice));
       if (offer.url && isHttpUrl(offer.url)) {
         const link = externalLink('В магазин', offer.url, 'link details-offer-link');
         link.append(el('span', 'visually-hidden', ` ${offer.retailer || ''} (откроется в новой вкладке)`));
@@ -266,24 +308,32 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
 
   // ---------- статистика цен ----------
 
+  function renderStats() {
+    if (!stats) return;
+    const current = money();
+    const rows = [
+      ['Минимум сейчас', formatPrice(stats.currentLowestMinor, current)],
+      ['Минимум за период', formatPrice(stats.lowestEverMinor, current)],
+      ['Средняя', formatPrice(stats.averageMinor, current)],
+      ['Магазинов', stats.retailerCount ?? 'Не указано'],
+    ];
+    const list = el('dl', 'details-stat-list');
+    for (const [term, value] of rows) {
+      const row = el('div', 'details-stat');
+      row.append(el('dt', '', term), el('dd', '', String(value)));
+      list.append(row);
+    }
+    parts.stats.replaceChildren(list);
+  }
+
   async function loadStats(myToken) {
+    stats = null;
     parts.stats.replaceChildren(el('p', 'details-muted', 'Загрузка…'));
     try {
-      const stats = await getPriceStats(product, { signal: controller.signal });
+      const result = await getPriceStats(product, { signal: controller.signal });
       if (myToken !== token) return;
-      const rows = [
-        ['Минимум сейчас', formatMoney(stats.currentLowestMinor, stats.currency)],
-        ['Минимум за период', formatMoney(stats.lowestEverMinor, stats.currency)],
-        ['Средняя', formatMoney(stats.averageMinor, stats.currency)],
-        ['Магазинов', stats.retailerCount ?? 'Не указано'],
-      ];
-      const list = el('dl', 'details-stat-list');
-      for (const [term, value] of rows) {
-        const row = el('div', 'details-stat');
-        row.append(el('dt', '', term), el('dd', '', String(value)));
-        list.append(row);
-      }
-      parts.stats.replaceChildren(list);
+      stats = result;
+      renderStats();
     } catch (error) {
       if (myToken !== token || isAbortError(error)) return;
       parts.stats.replaceChildren(
@@ -479,9 +529,13 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild } = {}) {
     dialog.remove();
   }
 
-  // обновить кнопку, если сборка поменялась снаружи
+  // обновить кнопку и цены, если сборка или валюта поменялись снаружи
   function refresh() {
-    if (dialog.open && product) updateAction();
+    if (!dialog.open || !product) return;
+    updateAction();
+    renderPrice();
+    renderStats();
+    if (isFullProduct(product)) renderOffers();
   }
 
   return { open, close, destroy, refresh };
