@@ -261,6 +261,21 @@
   font-size: var(--rf-secondary);
   line-height: 20px;
 }
+.product-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px var(--rf-space-3);
+  margin-top: var(--rf-space-2);
+}
+.product-card-rating { margin: 0; }
+.product-card-shops {
+  margin: 0;
+  color: var(--rf-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
 .product-card-price {
   margin: var(--rf-space-3) 0 0;
   font: 600 22px/28px var(--rf-font-body);

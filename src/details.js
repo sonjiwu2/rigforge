@@ -1,7 +1,7 @@
 import './styles/details.css';
 import { getCategory } from './data/catalog.js';
 import { icon } from './icons.js';
-import { formatMoney, formatPrice, convertFromGbp } from './format.js';
+import { formatMoney, formatPrice, convertFromGbp, pluralRu } from './format.js';
 import { getProductDetails, getPriceStats, isAbortError } from './api.js';
 import { getSupplementaryInfo } from './enrichment.js';
 import { createProductImage } from './assets.js';
@@ -42,13 +42,51 @@ function isFullProduct(product) {
   return Array.isArray(product.offers);
 }
 
+const REVIEW_TEXT_MAX = 1000;
+const REVIEW_AUTHOR_MAX = 40;
+
+// 4.5 -> '4,5'
+function formatRating(value) {
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function makeStars(rating, label) {
+  const stars = el('span', 'stars');
+  stars.style.setProperty('--rating', String(rating));
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', label || `Оценка ${formatRating(rating)} из 5`);
+  return stars;
+}
+
+function formatReviewDate(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 // '2026-10-30' -> '30.10.2026'
 function formatRateDate(date) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
   return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
 }
 
-export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney } = {}) {
+export function createDetailsDialog({
+  getAction,
+  onAction,
+  onGoToBuild,
+  getMoney,
+  getReviews,
+  getRating,
+  onAddReview,
+  onDeleteReview,
+} = {}) {
+  let starsHtml = '';
+  for (let i = 1; i <= 5; i++) {
+    starsHtml += `
+      <input type="radio" name="details-rating" id="details-rv-${i}" value="${i}" class="visually-hidden">
+      <label for="details-rv-${i}"><span aria-hidden="true">★</span><span class="visually-hidden">${i} из 5</span></label>`;
+  }
+
   const dialog = el('dialog', 'details-dialog');
   dialog.setAttribute('aria-labelledby', 'details-title');
   dialog.innerHTML = `
@@ -70,6 +108,7 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
         <div class="details-tabs" role="tablist" aria-label="Сведения о детали">
           <button type="button" role="tab" class="details-tab" id="details-tab-specs" aria-controls="details-panel-specs" aria-selected="true">Характеристики</button>
           <button type="button" role="tab" class="details-tab" id="details-tab-desc" aria-controls="details-panel-desc" aria-selected="false" tabindex="-1">Описание</button>
+          <button type="button" role="tab" class="details-tab" id="details-tab-reviews" aria-controls="details-panel-reviews" aria-selected="false" tabindex="-1">Отзывы<span class="details-tab-count"></span></button>
         </div>
         <div class="details-panel" role="tabpanel" id="details-panel-specs" aria-labelledby="details-tab-specs" tabindex="0">
           <div class="details-specs"></div>
@@ -86,6 +125,31 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
         <div class="details-panel" role="tabpanel" id="details-panel-desc" aria-labelledby="details-tab-desc" tabindex="0" hidden>
           <div class="details-description"></div>
           <div class="details-series" aria-live="polite"></div>
+        </div>
+        <div class="details-panel" role="tabpanel" id="details-panel-reviews" aria-labelledby="details-tab-reviews" tabindex="0" hidden>
+          <div class="details-review-summary"></div>
+          <ul class="details-review-list" aria-label="Отзывы"></ul>
+          <form class="details-review-form" novalidate aria-labelledby="details-review-form-title">
+            <h3 class="details-subtitle" id="details-review-form-title">Оставить отзыв</h3>
+            <fieldset class="stars-input">
+              <legend class="field-label">Оценка</legend>
+              <span class="stars-input-options">${starsHtml}
+              </span>
+              <p class="field-error" id="details-review-rating-error" hidden></p>
+            </fieldset>
+            <div class="field">
+              <label class="field-label" for="details-review-text">Текст отзыва</label>
+              <textarea class="input details-review-text" id="details-review-text" rows="4" maxlength="${REVIEW_TEXT_MAX}" aria-describedby="details-review-counter"></textarea>
+              <p class="details-review-counter" id="details-review-counter">0 / ${REVIEW_TEXT_MAX}</p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="details-review-author">Имя (необязательно)</label>
+              <input class="input" id="details-review-author" type="text" maxlength="${REVIEW_AUTHOR_MAX}" autocomplete="nickname">
+            </div>
+            <button type="submit" class="btn btn-primary details-review-submit">Отправить отзыв</button>
+            <p class="details-review-status" role="status"></p>
+          </form>
+          <p class="details-muted details-review-local">Отзывы хранятся в этом браузере</p>
         </div>
         <p class="details-attribution">
           <a href="https://vantaspec.com" target="_blank" rel="noopener noreferrer">Данные: VantaSpec</a>
@@ -110,7 +174,17 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
     price: $('.details-price'),
     priceNote: $('.details-price-note'),
     tabs: [...dialog.querySelectorAll('[role="tab"]')],
-    panels: [$('#details-panel-specs'), $('#details-panel-desc')],
+    panels: [$('#details-panel-specs'), $('#details-panel-desc'), $('#details-panel-reviews')],
+    tabCount: $('.details-tab-count'),
+    reviewSummary: $('.details-review-summary'),
+    reviewList: $('.details-review-list'),
+    reviewForm: $('.details-review-form'),
+    ratingBox: $('.stars-input'),
+    ratingError: $('#details-review-rating-error'),
+    reviewText: $('#details-review-text'),
+    reviewCounter: $('#details-review-counter'),
+    reviewAuthor: $('#details-review-author'),
+    reviewStatus: $('.details-review-status'),
     specs: $('.details-specs'),
     stats: $('.details-stats'),
     offers: $('.details-offers'),
@@ -399,6 +473,138 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
     }
   }
 
+  // ---------- отзывы ----------
+
+  function currentReviews() {
+    const list = typeof getReviews === 'function' ? getReviews(product.id) : [];
+    return Array.isArray(list) ? list : [];
+  }
+
+  function currentRating(reviews) {
+    const rating = typeof getRating === 'function' ? getRating(product.id) : null;
+    if (rating && rating.count > 0 && Number.isFinite(rating.average)) return rating;
+    if (!reviews.length) return { average: null, count: 0 };
+    const sum = reviews.reduce((total, review) => total + review.rating, 0);
+    return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+  }
+
+  function renderReviews() {
+    const reviews = currentReviews();
+    const rating = currentRating(reviews);
+    parts.tabCount.textContent = rating.count ? ` (${rating.count})` : '';
+
+    parts.reviewSummary.replaceChildren();
+    if (rating.count) {
+      const text = formatRating(rating.average);
+      const stars = makeStars(rating.average);
+      stars.classList.add('details-review-stars');
+      parts.reviewSummary.append(
+        stars,
+        el('span', 'details-review-average', `${text} из 5`),
+        el('span', 'details-muted', `${rating.count} ${pluralRu(rating.count, ['отзыв', 'отзыва', 'отзывов'])}`)
+      );
+    } else {
+      parts.reviewSummary.append(el('p', 'details-muted', 'Отзывов пока нет. Ваш будет первым.'));
+    }
+
+    parts.reviewList.replaceChildren();
+    parts.reviewList.hidden = reviews.length === 0;
+    for (const review of reviews) {
+      const item = el('li', 'details-review');
+      item.dataset.id = review.id;
+      const head = el('div', 'details-review-head');
+      const author = review.author || 'Без имени';
+      head.append(el('p', 'details-review-author', author));
+      head.append(makeStars(review.rating, `Оценка ${review.rating} из 5`));
+      const date = formatReviewDate(review.createdAt);
+      if (date) {
+        const time = el('time', 'details-review-date', date);
+        time.dateTime = review.createdAt;
+        head.append(time);
+      }
+      item.append(head);
+      // текст пользователя — только через textContent
+      if (review.text) item.append(el('p', 'details-review-text', review.text));
+      const remove = el('button', 'btn btn-secondary btn-sm details-review-delete', 'Удалить');
+      remove.type = 'button';
+      remove.append(el('span', 'visually-hidden', ` отзыв: ${author}${date ? ', ' + date : ''}`));
+      item.append(remove);
+      parts.reviewList.append(item);
+    }
+  }
+
+  function showRatingError(message) {
+    parts.ratingError.textContent = message;
+    parts.ratingError.hidden = !message;
+    parts.ratingBox.classList.toggle('is-invalid', !!message);
+    for (const input of parts.ratingBox.querySelectorAll('input')) {
+      if (message) {
+        input.setAttribute('aria-describedby', parts.ratingError.id);
+        input.setAttribute('aria-invalid', 'true');
+      } else {
+        input.removeAttribute('aria-describedby');
+        input.removeAttribute('aria-invalid');
+      }
+    }
+  }
+
+  function updateCounter() {
+    parts.reviewCounter.textContent = `${parts.reviewText.value.length} / ${REVIEW_TEXT_MAX}`;
+  }
+
+  function resetReviewForm() {
+    parts.reviewForm.reset();
+    showRatingError('');
+    updateCounter();
+  }
+
+  parts.reviewText.addEventListener('input', updateCounter);
+  parts.ratingBox.addEventListener('change', () => {
+    showRatingError('');
+    parts.reviewStatus.textContent = '';
+  });
+
+  parts.reviewForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!product) return;
+    parts.reviewStatus.textContent = '';
+    const checked = parts.ratingBox.querySelector('input:checked');
+    if (!checked) {
+      showRatingError('Выберите оценку от 1 до 5 звёзд');
+      parts.ratingBox.querySelector('input').focus();
+      return;
+    }
+    const data = {
+      rating: Number(checked.value),
+      text: parts.reviewText.value.trim().slice(0, REVIEW_TEXT_MAX),
+      author: parts.reviewAuthor.value.trim().slice(0, REVIEW_AUTHOR_MAX),
+    };
+    const ok = typeof onAddReview === 'function' ? onAddReview(product.id, data) : false;
+    if (ok === false) {
+      parts.reviewStatus.textContent = 'Не удалось сохранить отзыв';
+      return;
+    }
+    resetReviewForm();
+    renderReviews();
+    parts.reviewStatus.textContent = 'Отзыв добавлен';
+  });
+
+  parts.reviewList.addEventListener('click', (event) => {
+    const button = event.target.closest('.details-review-delete');
+    if (!button || !product) return;
+    const item = button.closest('.details-review');
+    const items = [...parts.reviewList.children];
+    const index = items.indexOf(item);
+    if (typeof onDeleteReview === 'function') onDeleteReview(product.id, item.dataset.id);
+    renderReviews();
+    parts.reviewStatus.textContent = 'Отзыв удалён';
+    // фокус — на соседний отзыв, иначе на саму вкладку
+    const left = parts.reviewList.querySelectorAll('.details-review-delete');
+    const next = left[Math.min(index, left.length - 1)];
+    if (next) next.focus();
+    else parts.panels[2].focus();
+  });
+
   // ---------- вкладки ----------
 
   function selectTab(index, focus) {
@@ -492,6 +698,9 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
     renderSpecs();
     renderDescription();
     parts.series.replaceChildren();
+    resetReviewForm();
+    parts.reviewStatus.textContent = '';
+    renderReviews();
     updateAction();
     selectTab(0, false);
     parts.scroll.scrollTop = 0;
@@ -529,13 +738,14 @@ export function createDetailsDialog({ getAction, onAction, onGoToBuild, getMoney
     dialog.remove();
   }
 
-  // обновить кнопку и цены, если сборка или валюта поменялись снаружи
+  // обновить кнопку, цены и отзывы, если сборка, валюта или отзывы поменялись снаружи
   function refresh() {
     if (!dialog.open || !product) return;
     updateAction();
     renderPrice();
     renderStats();
     if (isFullProduct(product)) renderOffers();
+    renderReviews();
   }
 
   return { open, close, destroy, refresh };

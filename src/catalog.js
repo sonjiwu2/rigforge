@@ -100,9 +100,10 @@ function buildFrame(container) {
         <div class="catalog-sort">
           <label class="visually-hidden" for="catalog-sort">Сортировка</label>
           <select class="select" id="catalog-sort" name="sort">
-            <option value="relevance">По популярности</option>
+            <option value="popular">По популярности</option>
             <option value="price-asc">Сначала дешевле</option>
             <option value="price-desc">Сначала дороже</option>
+            <option value="rating">По оценке</option>
           </select>
         </div>
       </div>
@@ -232,6 +233,8 @@ function bindEvents(view) {
   });
   // цену применяем по Enter или при уходе из поля
   view.sidebarForm.addEventListener('focusout', (event) => {
+    // поле могли убрать при перерисовке — тогда это не уход из поля
+    if (!event.target.isConnected) return;
     if (event.target.matches('[data-price]')) applyFromForm(view, view.sidebarForm, cb, true);
   });
 
@@ -294,6 +297,10 @@ function findItem(view, id) {
 
 // ---------- фильтры ----------
 
+function priceLegend(money) {
+  return `Цена, ${CURRENCIES[shownCurrency(money)].symbol}`;
+}
+
 function renderFilterFields(form, options, prefix, money) {
   const box = form.querySelector('.catalog-filter-fields');
   box.replaceChildren();
@@ -310,8 +317,7 @@ function renderFilterFields(form, options, prefix, money) {
   }
 
   const price = el('fieldset', 'filter-group filter-price');
-  const symbol = CURRENCIES[shownCurrency(money)].symbol;
-  price.append(el('legend', 'filter-legend', `Цена, ${symbol}`));
+  price.append(el('legend', 'filter-legend filter-price-legend', priceLegend(money)));
   const row = el('div', 'filter-price-row');
   for (const [name, text] of [['min', 'Цена от'], ['max', 'Цена до']]) {
     const field = el('div', 'field');
@@ -466,10 +472,8 @@ function applyDialog(view, cb) {
 
 function updateSidebar(view, catalog, money) {
   const options = catalog.options;
-  // поля перерисовываем только при смене категории/набора значений/валюты
-  const key = options
-    ? JSON.stringify([catalog.category, options.brands, options.specs, shownCurrency(money)])
-    : view.fieldsKey;
+  // поля перерисовываем только при смене категории/набора значений
+  const key = options ? JSON.stringify([catalog.category, options.brands, options.specs]) : view.fieldsKey;
   if (key !== view.fieldsKey || !view.fieldsKey) {
     const focused = document.activeElement;
     const focusId = view.sidebarForm.contains(focused) ? focused.id : null;
@@ -480,7 +484,13 @@ function updateSidebar(view, catalog, money) {
       if (again) again.focus();
     }
   }
-  fillFilterFields(view.sidebarForm, catalog, true, money);
+  // при смене валюты пересчитываем и поле в фокусе, иначе в нём останется старая сумма
+  const currency = shownCurrency(money);
+  const currencyChanged = view.fieldsCurrency !== currency;
+  view.fieldsCurrency = currency;
+  const legend = view.sidebarForm.querySelector('.filter-price-legend');
+  if (legend) legend.textContent = priceLegend(money);
+  fillFilterFields(view.sidebarForm, catalog, !currencyChanged, money);
 
   const active = countActiveFilters(catalog);
   view.sidebarReset.hidden = active === 0;
@@ -496,7 +506,34 @@ function getCardLabel(product, callbacks) {
   return { inBuild, label };
 }
 
-function renderCard(product, { inBuild, label }, money) {
+// Число отзывов с одним знаком через запятую: 4.5 -> '4,5'
+function formatRating(value) {
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function getCardRating(product, callbacks) {
+  const rating = typeof callbacks.getRating === 'function' ? callbacks.getRating(product.id) : null;
+  return rating && rating.count > 0 && Number.isFinite(rating.average) ? rating : { average: null, count: 0 };
+}
+
+function shopsCount(product) {
+  if (product.popularity && Number.isFinite(product.popularity.offers)) return product.popularity.offers;
+  return Array.isArray(product.offers) ? product.offers.length : 0;
+}
+
+function renderRating(rating) {
+  if (!rating.count) return el('p', 'rating rating-empty product-card-rating', 'Нет отзывов');
+  const line = el('p', 'rating product-card-rating');
+  const text = formatRating(rating.average);
+  const stars = el('span', 'stars');
+  stars.style.setProperty('--rating', String(rating.average));
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `Оценка ${text} из 5`);
+  line.append(stars, el('span', '', `${text} · ${rating.count} ${pluralRu(rating.count, ['отзыв', 'отзыва', 'отзывов'])}`));
+  return line;
+}
+
+function renderCard(product, { inBuild, label, rating }, money) {
   const item = el('li', 'product-card-item');
   const card = el('article', 'product-card');
   card.dataset.id = product.id;
@@ -523,6 +560,14 @@ function renderCard(product, { inBuild, label }, money) {
 
   const specs = getCardSpecs(product);
   if (specs.length) body.append(el('p', 'product-card-specs', specs.join(' · ')));
+
+  const meta = el('div', 'product-card-meta');
+  meta.append(renderRating(rating));
+  const shops = shopsCount(product);
+  if (shops > 0) {
+    meta.append(el('p', 'product-card-shops', `В ${shops} ${pluralRu(shops, ['магазине', 'магазинах', 'магазинах'])}`));
+  }
+  body.append(meta);
 
   const price = el('p', 'product-card-price');
   if (product.priceMinor === null || product.priceMinor === undefined) {
@@ -563,9 +608,13 @@ function renderCard(product, { inBuild, label }, money) {
 
 function updateGrid(view, catalog, callbacks, money) {
   const items = catalog.items || [];
-  const labels = items.map((product) => getCardLabel(product, callbacks));
+  const labels = items.map((product) => ({ ...getCardLabel(product, callbacks), rating: getCardRating(product, callbacks) }));
   const key =
-    moneyKey(money) + '\n' + items.map((product, i) => `${product.id}|${labels[i].label}|${product.priceMinor}`).join('\n');
+    moneyKey(money) +
+    '\n' +
+    items
+      .map((product, i) => `${product.id}|${labels[i].label}|${product.priceMinor}|${labels[i].rating.average}|${labels[i].rating.count}`)
+      .join('\n');
   if (key === view.gridKey) return;
   view.gridKey = key;
 
@@ -704,8 +753,9 @@ export function renderCatalog(container, state, callbacks = {}) {
   }
   view.categorySelect.value = catalog.category;
 
-  view.sortSelect.value = catalog.sort || 'relevance';
-  view.sortSelect.options[0].textContent = catalog.query ? 'По релевантности' : 'По популярности';
+  view.sortSelect.value = catalog.sort || 'popular';
+  // старое или неизвестное значение показываем как «По популярности»
+  if (view.sortSelect.selectedIndex === -1) view.sortSelect.value = 'popular';
 
   const target = catalog.targetSlot ? getCategory(catalog.targetSlot) : null;
   view.replaceBox.hidden = !target;

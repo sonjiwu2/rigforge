@@ -290,6 +290,76 @@ html:has(.details-dialog[open]) { overflow: hidden; }
 }
 .details-series-error-title { margin: 0 0 var(--rf-space-1); font-weight: 600; }
 
+/* отзывы */
+.details-tab-count { font-weight: 500; }
+.details-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rf-space-1) var(--rf-space-3);
+  padding: var(--rf-space-3) 0;
+}
+.details-review-summary .details-muted { margin: 0; }
+.details-review-stars { font-size: 24px; }
+.details-review-average { font: 600 18px/24px var(--rf-font-body); }
+
+.details-review-list { margin: 0 0 var(--rf-space-2); padding: 0; list-style: none; }
+.details-review-list[hidden] { display: none; }
+.details-review {
+  display: grid;
+  gap: var(--rf-space-2);
+  padding: var(--rf-space-3) 0;
+  border-bottom: 1px solid var(--rf-border);
+}
+.details-review:first-child { border-top: 1px solid var(--rf-border); }
+.details-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--rf-space-3);
+}
+.details-review-author { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.details-review-date { color: var(--rf-text-secondary); font-size: 13px; line-height: 18px; }
+.details-review-text {
+  margin: 0;
+  line-height: 24px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.details-review-delete { justify-self: start; }
+
+.details-review-form {
+  display: grid;
+  gap: var(--rf-space-4);
+  margin-top: var(--rf-space-6);
+  padding: var(--rf-space-4);
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius-card);
+  background: var(--rf-background);
+}
+.details-review-form .details-subtitle { margin: 0; }
+.details-review-form .stars-input { margin: 0; padding: 0; border: 0; min-width: 0; }
+.details-review-form .field-error[hidden] { display: none; }
+.details-review-form textarea.input { min-height: 112px; resize: vertical; }
+.details-review-counter {
+  margin: -4px 0 0;
+  color: var(--rf-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.details-review-submit { justify-self: start; }
+.details-review-status {
+  margin: 0;
+  color: var(--rf-primary);
+  font-size: var(--rf-secondary);
+  font-weight: 600;
+  line-height: 20px;
+}
+.details-review-status:empty { display: none; }
+.details-review-local { margin-top: var(--rf-space-3); }
+
 .details-attribution {
   margin: var(--rf-space-6) 0 0;
   font-size: 13px;
