@@ -1,12 +1,15 @@
-// Хранение текущей сборки и сохранённых сборок в localStorage.
+// Хранение текущей сборки, сохранённых сборок, отзывов и настроек в localStorage.
 // Всё, что прочитали из хранилища, проверяем: туда мог попасть мусор
 // (старая версия сайта, ручная правка, обрезанная запись).
 import { CATEGORIES } from './data/catalog.js';
+import { cleanReviewsMap } from './reviews.js';
 
 const STORAGE_KEY = 'rigforge:state:v1';
 const VERSION = 1;
 const NAME_MAX = 80;
 const SLOT_IDS = CATEGORIES.map((category) => category.id);
+const CURRENCY_CODES = ['GBP', 'USD', 'RUB'];
+const DEFAULT_SETTINGS = { currency: 'GBP' };
 
 const WARNING_UNAVAILABLE = 'Хранилище браузера недоступно — сборки не сохранятся после закрытия вкладки';
 const WARNING_BROKEN = 'Сохранённые данные повреждены и были сброшены';
@@ -65,6 +68,22 @@ function cleanName(value) {
   return name.length >= 1 && name.length <= NAME_MAX ? name : null;
 }
 
+// Фото из API разрешаем только с CDN VantaSpec и только по https
+function cleanImageUrl(value) {
+  if (typeof value !== 'string' || value.length > 500) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'cdn.vantaspec.com' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanSettings(value) {
+  const currency = value && CURRENCY_CODES.includes(value.currency) ? value.currency : DEFAULT_SETTINGS.currency;
+  return { currency };
+}
+
 function cleanSpecs(value) {
   if (!Array.isArray(value)) return null;
   const specs = [];
@@ -117,6 +136,7 @@ function cleanSnapshot(value, slotId) {
     priceMinor,
     currency,
     specs,
+    imageUrl: cleanImageUrl(value.imageUrl),
     priceAsOf,
   };
 }
@@ -179,11 +199,14 @@ function cleanState(data, problems) {
     ids.add(savedBuild.id);
     saved.push(savedBuild);
   }
-  return { build, saved };
+  // в старых записях отзывов и настроек ещё не было — это не ошибка
+  const reviews = cleanReviewsMap(data.reviews, problems);
+  const settings = cleanSettings(data.settings);
+  return { build, saved, reviews, settings };
 }
 
 export function loadAppState() {
-  const empty = () => ({ build: createEmptyBuild(), saved: [] });
+  const empty = () => ({ build: createEmptyBuild(), saved: [], reviews: {}, settings: { ...DEFAULT_SETTINGS } });
 
   const storage = getStorage();
   if (!storage) {
@@ -226,7 +249,7 @@ export function loadAppState() {
   };
 }
 
-export function persistAppState({ build, saved }) {
+export function persistAppState({ build, saved, reviews, settings }) {
   const storage = getStorage();
   if (!storage) return false;
 
@@ -240,8 +263,16 @@ export function persistAppState({ build, saved }) {
     if (savedBuild) cleanSaved.push(savedBuild);
   }
 
+  const data = {
+    version: VERSION,
+    build: cleanCurrent,
+    saved: cleanSaved,
+    reviews: cleanReviewsMap(reviews, problems),
+    settings: cleanSettings(settings),
+  };
+
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify({ version: VERSION, build: cleanCurrent, saved: cleanSaved }));
+    storage.setItem(STORAGE_KEY, JSON.stringify(data));
     return true;
   } catch {
     return false;
