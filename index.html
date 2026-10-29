@@ -22,7 +22,15 @@
           <a class="main-nav__link" href="#catalog" data-nav="catalog">Каталог</a>
           <a class="main-nav__link" href="#saved" data-nav="saved">Сохранённые</a>
         </nav>
-        <p class="currency"><span class="visually-hidden">Валюта цен: </span>GBP £</p>
+        <div class="currency-box">
+          <span id="rate-note" class="rate-note"></span>
+          <label class="visually-hidden" for="currency-select">Валюта</label>
+          <select id="currency-select" class="currency-select">
+            <option value="GBP">GBP £</option>
+            <option value="USD">USD $</option>
+            <option value="RUB">RUB ₽</option>
+          </select>
+        </div>
       </div>
     </header>
 
@@ -39,7 +47,9 @@
           <a class="link" href="https://vantaspec.com" target="_blank" rel="noopener noreferrer">VantaSpec<span class="visually-hidden"> (откроется в новой вкладке)</span></a>
         </p>
         <p>Описание серий — Wikipedia, CC BY-SA 4.0</p>
-        <p>Сборки хранятся только в этом браузере</p>
+        <p>Фото товаров: VantaSpec и Wikimedia Commons</p>
+        <p>Курсы валют: Currency-api</p>
+        <p>Сборки и отзывы хранятся только в этом браузере</p>
       </div>
     </footer>
 
