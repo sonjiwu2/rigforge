@@ -380,8 +380,8 @@ function updateRateNote() {
   if (!rateNote) return;
   const money = state.money;
   if (money.currency === 'GBP') rateNote.textContent = '';
-  else if (money.status === 'loading') rateNote.textContent = 'Загружаем курс…';
-  else if (money.status === 'error') rateNote.textContent = 'Курс недоступен, цены в фунтах';
+  else if (money.status === 'loading') rateNote.textContent = 'Загрузка курса…';
+  else if (money.status === 'error') rateNote.textContent = 'Курс недоступен';
   else if (money.date) rateNote.textContent = 'Курс на ' + formatRateDate(money.date);
 }
 

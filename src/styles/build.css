@@ -534,7 +534,7 @@ button.build-row-art:focus-visible {
   font-size: 18px;
   line-height: 24px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: lining-nums;
   white-space: nowrap;
 }
 
