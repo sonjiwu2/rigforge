@@ -140,7 +140,7 @@ async function fetchCategory(categoryId) {
   for (const items of results) {
     for (const item of items) bySlug.set(item.slug, item);
   }
-  // порядок как в CATALOG_SLUGS — это и есть «по релевантности»
+  // порядок как в CATALOG_SLUGS — исходный, при равной популярности остаётся он
   const items = slugs.map((slug) => bySlug.get(slug)).filter(Boolean);
   return { items, attribution: ATTRIBUTION };
 }
@@ -160,11 +160,12 @@ export function loadCategory(categoryId, { signal } = {}) {
   return waitWithSignal(categoryCache.get(categoryId), signal);
 }
 
-// Ищем локально: категория грузится целиком, дальше фильтры и сортировка
+// Ищем локально: категория грузится целиком, дальше фильтры и сортировка.
+// params.ratings — средние оценки из отзывов (для сортировок 'rating' и 'popular')
 export async function searchProducts(params = {}, { signal } = {}) {
   const { items } = await loadCategory(params.category, { signal });
   const filtered = filterProducts(items, params);
-  const sorted = sortProducts(filtered, params.sort || 'relevance');
+  const sorted = sortProducts(filtered, params.sort || 'popular', params.ratings || {});
   return { items: sorted, total: sorted.length };
 }
 

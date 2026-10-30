@@ -64,6 +64,21 @@ function isHttpUrl(value) {
   }
 }
 
+// Фото берём только с CDN VantaSpec и только по https
+function cleanImageUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'cdn.vantaspec.com' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function toCount(value) {
+  return Number.isInteger(value) && value > 0 ? value : 0;
+}
+
 function toMinor(price) {
   return typeof price === 'number' && Number.isFinite(price) && price >= 0
     ? Math.round(price * 100)
@@ -152,13 +167,15 @@ export function normalizeCompareResponse(json, categoryId) {
       currency,
       priceKind,
       offers,
-      imageUrl: null,
+      imageUrl: cleanImageUrl(raw.imageUrl),
       gallery: [],
       specs,
       description,
       descriptionScope: description ? 'exact' : null,
       sourceUrl: `https://vantaspec.com/products/${encodeURIComponent(raw.slug)}`,
       priceAsOf,
+      // популярность: в скольких магазинах продаётся и сколько раз добавили в избранное на VantaSpec
+      popularity: { offers: offers.length, favorites: toCount(raw.favorites) },
     });
   });
 
@@ -192,6 +209,7 @@ export function toSnapshot(product) {
     model: product.model,
     priceMinor: product.priceMinor,
     currency: product.currency,
+    imageUrl: product.imageUrl || null,
     specs,
     priceAsOf: product.priceAsOf,
   };
@@ -298,16 +316,46 @@ export function filterProducts(items, filters = {}) {
   });
 }
 
-export function sortProducts(items, sort = 'relevance') {
+function comparePrice(a, b) {
+  if (a.priceMinor === null && b.priceMinor === null) return 0;
+  if (a.priceMinor === null) return 1;
+  if (b.priceMinor === null) return -1;
+  return a.priceMinor - b.priceMinor;
+}
+
+// sort: 'popular' | 'price-asc' | 'price-desc' | 'rating'
+// ratings: { [productId]: { average, count } } — отзывы пользователя из этого браузера
+export function sortProducts(items, sort = 'popular', ratings = {}) {
   const list = items.slice();
-  if (sort !== 'price-asc' && sort !== 'price-desc') return list;
-  const direction = sort === 'price-asc' ? 1 : -1;
-  // sort стабильный, поэтому при равной цене остаётся порядок по релевантности
+  const rating = (product) => (ratings && ratings[product.id]) || { average: null, count: 0 };
+  const reviewCount = (product) => rating(product).count || 0;
+
+  // sort стабильный, поэтому при равенстве остаётся исходный порядок
+  if (sort === 'price-asc') return list.sort(comparePrice);
+  if (sort === 'price-desc') {
+    // товары без цены всё равно в конце
+    return list.sort((a, b) => {
+      if (a.priceMinor === null || b.priceMinor === null) return comparePrice(a, b);
+      return b.priceMinor - a.priceMinor;
+    });
+  }
+  if (sort === 'rating') {
+    return list.sort((a, b) => {
+      const avgA = rating(a).average;
+      const avgB = rating(b).average;
+      if (avgA === null && avgB === null) return 0;
+      if (avgA === null) return 1;
+      if (avgB === null) return -1;
+      return avgB - avgA || reviewCount(b) - reviewCount(a);
+    });
+  }
+
+  // по популярности: число магазинов, потом избранное на VantaSpec, потом число отзывов
+  const popularity = (product) => product.popularity || { offers: (product.offers || []).length, favorites: 0 };
   return list.sort((a, b) => {
-    if (a.priceMinor === null && b.priceMinor === null) return 0;
-    if (a.priceMinor === null) return 1;
-    if (b.priceMinor === null) return -1;
-    return (a.priceMinor - b.priceMinor) * direction;
+    const popA = popularity(a);
+    const popB = popularity(b);
+    return popB.offers - popA.offers || popB.favorites - popA.favorites || reviewCount(b) - reviewCount(a);
   });
 }
 
