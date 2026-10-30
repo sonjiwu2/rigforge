@@ -1,11 +1,11 @@
-import './styles/build.css';
-import { CATEGORIES, getCategory } from './data/catalog.js';
-import { convertFromGbp, convertToGbp, formatMoney, formatPrice, parseMoneyInput, pluralRu } from './format.js';
-import { CURRENCIES } from './currency.js';
-import { icon } from './icons.js';
+import '../../styles/views/build.css';
+import { CATEGORIES, getCategory } from '../../data/catalog.js';
+import { convertFromGbp, convertToGbp, formatMoney, formatPrice, parseMoneyInput, pluralRu } from '../../utils/format.js';
+import { CURRENCIES } from '../../api/currency.js';
+import { icon } from '../../components/icons.js';
 
 // пустую сборку создаёт storage.js (он не должен тянуть за собой стили и разметку)
-export { createEmptyBuild } from './storage.js';
+export { createEmptyBuild } from '../../core/storage.js';
 
 const NAME_MAX = 80;
 const DETAIL_FORMS = ['деталь', 'детали', 'деталей'];

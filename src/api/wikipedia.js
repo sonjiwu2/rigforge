@@ -1,6 +1,6 @@
 // Блок «О серии»: вступление статьи английской Википедии про серию процессора или видеокарты.
 // Серию определяем только по точному совпадению названия модели.
-import { ApiError, fetchJson } from './api.js';
+import { ApiError, fetchJson } from './vantaspec.js';
 
 const WIKI_API_URL = 'https://en.wikipedia.org/w/api.php';
 const MAX_EXTRACT = 900;

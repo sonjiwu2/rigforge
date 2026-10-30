@@ -1,10 +1,10 @@
-import './styles/catalog.css';
-import { CATEGORIES, getCategory } from './data/catalog.js';
-import { icon } from './icons.js';
-import { formatPrice, convertFromGbp, convertToGbp, parseMoneyInput, pluralRu } from './format.js';
-import { CURRENCIES } from './currency.js';
-import { getSpec } from './products.js';
-import { createProductImage } from './assets.js';
+import '../../styles/views/catalog.css';
+import { CATEGORIES, getCategory } from '../../data/catalog.js';
+import { icon } from '../../components/icons.js';
+import { formatPrice, convertFromGbp, convertToGbp, parseMoneyInput, pluralRu } from '../../utils/format.js';
+import { CURRENCIES } from '../../api/currency.js';
+import { getSpec } from '../../core/products.js';
+import { createProductImage } from '../../components/artwork.js';
 
 const SLOT_IDS = ['cpu', 'motherboard', 'gpu', 'ram', 'ssd', 'hdd', 'psu', 'case', 'cooler'];
 const DESKTOP_FILTERS = '(min-width: 1200px)';

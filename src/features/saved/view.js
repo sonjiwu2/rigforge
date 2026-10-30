@@ -1,9 +1,9 @@
-import './styles/saved.css';
-import { CATEGORIES } from './data/catalog.js';
-import { icon } from './icons.js';
+import '../../styles/views/saved.css';
+import { CATEGORIES } from '../../data/catalog.js';
+import { icon } from '../../components/icons.js';
 import {
   calculateBuildTotals, countText, escapeHtml, formatRateDate, getDisplayCurrency, handleImageError, priceText,
-} from './build.js';
+} from '../build/view.js';
 
 const NAME_MAX = 80;
 const SEARCH_FROM = 4; // поиск нужен, только если сборок больше трёх

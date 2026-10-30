@@ -1,6 +1,6 @@
 // Фото деталей: сначала проверенные фото из manifest (Wikimedia Commons),
 // потом фото из VantaSpec по ссылке, иначе — нейтральная картинка категории.
-import manifest from './data/assets-manifest.json';
+import manifest from '../data/assets-manifest.json';
 
 const PLACEHOLDER_ALT = 'Фотография модели отсутствует';
 

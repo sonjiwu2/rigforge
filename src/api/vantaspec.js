@@ -1,7 +1,7 @@
 // Запросы к VantaSpec. Поиск у них без CORS, поэтому список моделей берём из catalog.js,
 // а цены и характеристики — из /api/compare (максимум 4 модели за запрос).
-import { CATALOG_SLUGS, getCategory } from './data/catalog.js';
-import { normalizeCompareResponse, filterProducts, sortProducts } from './products.js';
+import { CATALOG_SLUGS, getCategory } from '../data/catalog.js';
+import { normalizeCompareResponse, filterProducts, sortProducts } from '../core/products.js';
 
 const COMPARE_URL = 'https://vantaspec.com/api/compare';
 const TIMEOUT_MS = 12000;

@@ -1,6 +1,6 @@
 // Валюты для вывода цен и курсы к фунту. Цены в данных всегда в GBP (пенсы),
 // в другую валюту переводим только при выводе.
-import { ApiError, fetchJson, isAbortError } from './api.js';
+import { ApiError, fetchJson, isAbortError } from './vantaspec.js';
 
 export const CURRENCIES = {
   GBP: { code: 'GBP', symbol: '£', label: 'GBP £', locale: 'en-GB', digits: 2 },

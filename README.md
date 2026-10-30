@@ -53,26 +53,35 @@ npm run preview
 
 ```
 src/
-  main.js          состояние приложения и связь разделов
-  api.js           запросы к VantaSpec
-  products.js      приведение данных к одному виду, фильтры и сортировка
-  enrichment.js    описание серии из Википедии
-  format.js        форматирование и пересчёт цен
-  currency.js      курсы валют
-  reviews.js       отзывы и средняя оценка
-  catalog.js       каталог
-  details.js       окно с подробностями
-  assets.js        фото деталей и заглушки
-  build.js         текущая сборка и бюджет
-  saved.js         сохранённые сборки
-  storage.js       localStorage
-  export.js        скачивание списков
-  data/            список моделей и фото
-  styles/          стили
+  main.js                     состояние приложения и связь разделов
+  api/
+    vantaspec.js              запросы к VantaSpec, ошибки, кеш
+    currency.js               курсы валют
+    wikipedia.js              описание серии из Википедии
+  core/
+    products.js               приведение данных к одному виду, фильтры, сортировка
+    storage.js                localStorage
+    reviews.js                отзывы и средняя оценка
+  components/
+    icons.js                  SVG-иконки
+    artwork.js                фото деталей и заглушки
+  features/
+    catalog/view.js           каталог: поиск, категории, фильтры
+    details/dialog.js         окно с подробностями о детали
+    build/view.js             текущая сборка и бюджет
+    build/export.js           скачивание списков
+    saved/view.js             сохранённые сборки
+  utils/format.js             форматирование и пересчёт цен
+  data/                       список моделей и данные о фото
+  styles/                     общие стили, styles/views/ — стили разделов
+  assets/                     шрифты и иконки
 public/
-  assets/          фото, заглушки, иконка сайта
-  licenses/        тексты лицензий
+  assets/                     фото, заглушки, иконка сайта
+  licenses/                   тексты лицензий
+docs/architecture.md          как устроено приложение
 ```
+
+Подробнее про состояние, данные и обработку ошибок — в [docs/architecture.md](docs/architecture.md).
 
 ## Команда
 

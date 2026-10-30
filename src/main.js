@@ -1,17 +1,17 @@
 import './styles/fonts.css';
 import './styles/tokens.css';
 import { getCategory } from './data/catalog.js';
-import { ApiError, loadCategory, searchProducts, isAbortError } from './api.js';
-import { toSnapshot, getFilterOptions } from './products.js';
-import { getProductArtwork } from './assets.js';
-import { renderCatalog } from './catalog.js';
-import { createDetailsDialog } from './details.js';
-import { createEmptyBuild, renderBuild } from './build.js';
-import { renderSaved } from './saved.js';
-import { loadAppState, persistAppState } from './storage.js';
-import { loadRates } from './currency.js';
-import { createReview, addReview, removeReview, getRatingSummary, getRatingsMap } from './reviews.js';
-import { downloadBuild, downloadAllBuilds } from './export.js';
+import { ApiError, loadCategory, searchProducts, isAbortError } from './api/vantaspec.js';
+import { toSnapshot, getFilterOptions } from './core/products.js';
+import { getProductArtwork } from './components/artwork.js';
+import { renderCatalog } from './features/catalog/view.js';
+import { createDetailsDialog } from './features/details/dialog.js';
+import { createEmptyBuild, renderBuild } from './features/build/view.js';
+import { renderSaved } from './features/saved/view.js';
+import { loadAppState, persistAppState } from './core/storage.js';
+import { loadRates } from './api/currency.js';
+import { createReview, addReview, removeReview, getRatingSummary, getRatingsMap } from './core/reviews.js';
+import { downloadBuild, downloadAllBuilds } from './features/build/export.js';
 
 const VIEWS = ['build', 'catalog', 'saved'];
 

@@ -1,5 +1,5 @@
 // Приводим ответ VantaSpec к общей модели Product и работаем со списком товаров.
-import { getCategory } from './data/catalog.js';
+import { getCategory } from '../data/catalog.js';
 
 export const SPEC_LABELS = {
   Architecture: 'Архитектура',

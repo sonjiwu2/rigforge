@@ -1,5 +1,5 @@
 // SVG-иконки вставляем прямо в разметку, чтобы они брали цвет текста (currentColor)
-const files = import.meta.glob('./assets/icons/*.svg', { query: '?raw', import: 'default', eager: true });
+const files = import.meta.glob('../assets/icons/*.svg', { query: '?raw', import: 'default', eager: true });
 
 const icons = {};
 for (const [path, svg] of Object.entries(files)) {

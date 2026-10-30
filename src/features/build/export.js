@@ -1,7 +1,7 @@
 // Скачивание списка комплектующих: одна сборка в .txt, все сохранённые в .json
-import { CATEGORIES } from './data/catalog.js';
-import { convertFromGbp, formatMoney, formatPrice, pluralRu } from './format.js';
-import { budgetInCurrency, calculateBuildTotals, formatRateDate, getDisplayCurrency } from './build.js';
+import { CATEGORIES } from '../../data/catalog.js';
+import { convertFromGbp, formatMoney, formatPrice, pluralRu } from '../../utils/format.js';
+import { budgetInCurrency, calculateBuildTotals, formatRateDate, getDisplayCurrency } from './view.js';
 
 const SOURCE_TEXT = 'Источник цен: VantaSpec (vantaspec.com), цены на момент добавления в сборку';
 const DETAIL_FORMS_GENITIVE = ['детали', 'деталей', 'деталей'];

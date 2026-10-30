@@ -1,10 +1,10 @@
-import './styles/details.css';
-import { getCategory } from './data/catalog.js';
-import { icon } from './icons.js';
-import { formatMoney, formatPrice, convertFromGbp, pluralRu } from './format.js';
-import { getProductDetails, getPriceStats, isAbortError } from './api.js';
-import { getSupplementaryInfo } from './enrichment.js';
-import { createProductImage } from './assets.js';
+import '../../styles/views/details.css';
+import { getCategory } from '../../data/catalog.js';
+import { icon } from '../../components/icons.js';
+import { formatMoney, formatPrice, convertFromGbp, pluralRu } from '../../utils/format.js';
+import { getProductDetails, getPriceStats, isAbortError } from '../../api/vantaspec.js';
+import { getSupplementaryInfo } from '../../api/wikipedia.js';
+import { createProductImage } from '../../components/artwork.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);

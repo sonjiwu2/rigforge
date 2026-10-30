@@ -1,6 +1,6 @@
 // Форматирование цен и чисел. Все суммы хранятся в минорных единицах (пенсы, центы, копейки),
 // цены товаров — всегда в пенсах GBP.
-import { CURRENCIES } from './currency.js';
+import { CURRENCIES } from '../api/currency.js';
 
 const formatters = new Map();
 

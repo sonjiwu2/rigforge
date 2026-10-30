@@ -1,7 +1,7 @@
 // Хранение текущей сборки, сохранённых сборок, отзывов и настроек в localStorage.
 // Всё, что прочитали из хранилища, проверяем: туда мог попасть мусор
 // (старая версия сайта, ручная правка, обрезанная запись).
-import { CATEGORIES } from './data/catalog.js';
+import { CATEGORIES } from '../data/catalog.js';
 import { cleanReviewsMap } from './reviews.js';
 
 const STORAGE_KEY = 'rigforge:state:v1';
