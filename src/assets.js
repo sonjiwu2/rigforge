@@ -1,5 +1,5 @@
-// Фото деталей. Показываем только проверенные фото из manifest,
-// для остальных моделей — нейтральную картинку категории.
+// Фото деталей: сначала проверенные фото из manifest (Wikimedia Commons),
+// потом фото из VantaSpec по ссылке, иначе — нейтральная картинка категории.
 import manifest from './data/assets-manifest.json';
 
 const PLACEHOLDER_ALT = 'Фотография модели отсутствует';
@@ -39,6 +39,23 @@ export function getPlaceholderSrc(categoryId) {
   return key ? localUrl(manifest.placeholders[key]) : '';
 }
 
+// Фото VantaSpec берём только с их CDN и только по https
+function isVantaspecImage(url) {
+  if (typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname === 'cdn.vantaspec.com';
+  } catch {
+    return false;
+  }
+}
+
+function productPageUrl(product) {
+  if (product.sourceUrl) return product.sourceUrl;
+  if (product.slug) return `https://vantaspec.com/products/${encodeURIComponent(product.slug)}`;
+  return 'https://vantaspec.com';
+}
+
 function productTitle(product) {
   const brand = product.manufacturer || '';
   const model = product.model || '';
@@ -64,6 +81,7 @@ export function getProductArtwork(product) {
         height: item.height,
       })),
       isPlaceholder: false,
+      sourceKind: asset.sourceKind || 'commons',
       fallbackSrc: localUrl(asset.fallback) || getPlaceholderSrc(category),
       mpn: asset.mpn || null,
       creator: asset.creator || null,
@@ -76,6 +94,28 @@ export function getProductArtwork(product) {
     };
   }
 
+  if (product && isVantaspecImage(product.imageUrl)) {
+    return {
+      src: product.imageUrl,
+      alt: productTitle(product),
+      // настоящий размер заранее неизвестен, у VantaSpec фото примерно 3:2
+      width: 600,
+      height: 400,
+      gallery: [],
+      isPlaceholder: false,
+      sourceKind: 'vantaspec',
+      fallbackSrc: getPlaceholderSrc(category),
+      mpn: null,
+      creator: null,
+      rightsStatus: 'права у производителя',
+      attribution: 'Фото: VantaSpec',
+      licenseUrl: null,
+      licensePath: null,
+      licenseFileUrl: '',
+      sourceUrl: productPageUrl(product),
+    };
+  }
+
   return {
     src: getPlaceholderSrc(category),
     alt: PLACEHOLDER_ALT,
@@ -83,6 +123,7 @@ export function getProductArtwork(product) {
     height: 128,
     gallery: [],
     isPlaceholder: true,
+    sourceKind: null,
     fallbackSrc: '',
     mpn: null,
     creator: null,
@@ -129,6 +170,8 @@ export function createProductImage(product, { large = false, className = '' } = 
   img.width = width;
   img.height = height;
   img.decoding = 'async';
+  // чужому CDN адрес нашей страницы не передаём
+  img.referrerPolicy = 'no-referrer';
   if (!large) img.loading = 'lazy';
   applyImageFallback(img, art.fallbackSrc);
   if (src) img.src = src;

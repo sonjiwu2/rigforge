@@ -1,7 +1,8 @@
 import './styles/catalog.css';
 import { CATEGORIES, getCategory } from './data/catalog.js';
 import { icon } from './icons.js';
-import { formatMoney, parseMoneyInput, pluralRu } from './format.js';
+import { formatPrice, convertFromGbp, convertToGbp, parseMoneyInput, pluralRu } from './format.js';
+import { CURRENCIES } from './currency.js';
 import { getSpec } from './products.js';
 import { createProductImage } from './assets.js';
 
@@ -18,10 +19,24 @@ function el(tag, className, text) {
   return node;
 }
 
-// Пенсы -> текст для поля ввода: 12000 -> '120', 12050 -> '120.50'
-function minorToInput(value) {
-  if (value === null || value === undefined) return '';
-  return value % 100 === 0 ? String(value / 100) : (value / 100).toFixed(2);
+// Пенсы -> текст для поля ввода в выбранной валюте: 12000 -> '120', 12050 -> '120.50'
+function minorToInput(valueGbp, money) {
+  if (valueGbp === null || valueGbp === undefined) return '';
+  const { minor, currency } = convertFromGbp(valueGbp, money);
+  // рубли без копеек
+  if (CURRENCIES[currency] && CURRENCIES[currency].digits === 0) return String(Math.round(minor / 100));
+  return minor % 100 === 0 ? String(minor / 100) : (minor / 100).toFixed(2);
+}
+
+// В какой валюте реально показываем цены (без курса — в фунтах)
+function shownCurrency(money) {
+  return convertFromGbp(0, money).currency;
+}
+
+function moneyKey(money) {
+  const currency = shownCurrency(money);
+  const rate = money && money.rates ? money.rates[currency] : 1;
+  return `${currency}:${rate}`;
 }
 
 function countActiveFilters(catalog) {
@@ -85,9 +100,10 @@ function buildFrame(container) {
         <div class="catalog-sort">
           <label class="visually-hidden" for="catalog-sort">Сортировка</label>
           <select class="select" id="catalog-sort" name="sort">
-            <option value="relevance">По популярности</option>
+            <option value="popular">По популярности</option>
             <option value="price-asc">Сначала дешевле</option>
             <option value="price-desc">Сначала дороже</option>
+            <option value="rating">По оценке</option>
           </select>
         </div>
       </div>
@@ -217,6 +233,8 @@ function bindEvents(view) {
   });
   // цену применяем по Enter или при уходе из поля
   view.sidebarForm.addEventListener('focusout', (event) => {
+    // поле могли убрать при перерисовке — тогда это не уход из поля
+    if (!event.target.isConnected) return;
     if (event.target.matches('[data-price]')) applyFromForm(view, view.sidebarForm, cb, true);
   });
 
@@ -279,7 +297,11 @@ function findItem(view, id) {
 
 // ---------- фильтры ----------
 
-function renderFilterFields(form, options, prefix) {
+function priceLegend(money) {
+  return `Цена, ${CURRENCIES[shownCurrency(money)].symbol}`;
+}
+
+function renderFilterFields(form, options, prefix, money) {
   const box = form.querySelector('.catalog-filter-fields');
   box.replaceChildren();
 
@@ -295,7 +317,7 @@ function renderFilterFields(form, options, prefix) {
   }
 
   const price = el('fieldset', 'filter-group filter-price');
-  price.append(el('legend', 'filter-legend', 'Цена, £'));
+  price.append(el('legend', 'filter-legend filter-price-legend', priceLegend(money)));
   const row = el('div', 'filter-price-row');
   for (const [name, text] of [['min', 'Цена от'], ['max', 'Цена до']]) {
     const field = el('div', 'field');
@@ -333,7 +355,7 @@ function makeCheckboxGroup(title, kind, key, values, prefix) {
 }
 
 // Проставить значения в уже отрисованные поля
-function fillFilterFields(form, values, skipFocused) {
+function fillFilterFields(form, values, skipFocused, money) {
   for (const input of form.querySelectorAll('input[type="checkbox"]')) {
     if (input.dataset.kind === 'brand') {
       input.checked = (values.brands || []).includes(input.value);
@@ -344,7 +366,10 @@ function fillFilterFields(form, values, skipFocused) {
   }
   for (const input of form.querySelectorAll('[data-price]')) {
     if (skipFocused && input === document.activeElement) continue;
-    input.value = minorToInput(input.dataset.price === 'min' ? values.priceMin : values.priceMax);
+    input.value = minorToInput(input.dataset.price === 'min' ? values.priceMin : values.priceMax, money);
+    // запоминаем показанный текст: если его не меняли, берём точную цену в фунтах,
+    // чтобы округление при пересчёте не меняло фильтр
+    input.dataset.shown = input.value;
     input.removeAttribute('aria-invalid');
   }
   showPriceError(form, '');
@@ -367,7 +392,7 @@ function showPriceError(form, message) {
 }
 
 // Прочитать форму. null — если в цене ошибка (сообщение уже показано)
-function readFilterForm(form) {
+function readFilterForm(form, catalog, money) {
   const result = { brands: [], specs: {}, priceMin: null, priceMax: null };
   for (const input of form.querySelectorAll('input[type="checkbox"]:checked')) {
     if (input.dataset.kind === 'brand') result.brands.push(input.value);
@@ -381,14 +406,22 @@ function readFilterForm(form) {
   let error = '';
   for (const input of form.querySelectorAll('[data-price]')) {
     const text = input.value.trim();
-    const value = text ? parseMoneyInput(text) : null;
+    const isMin = input.dataset.price === 'min';
+    let value = null;
+    if (text && catalog && text === (input.dataset.shown || '').trim()) {
+      value = isMin ? catalog.priceMin ?? null : catalog.priceMax ?? null;
+    } else if (text) {
+      // ввод в выбранной валюте, в фильтр уходят пенсы
+      const minor = parseMoneyInput(text);
+      value = minor === null ? null : convertToGbp(minor, money);
+    }
     if (text && value === null) {
       input.setAttribute('aria-invalid', 'true');
       error = 'Введите цену числом, например 150 или 149.99';
     } else {
       input.removeAttribute('aria-invalid');
     }
-    if (input.dataset.price === 'min') result.priceMin = value;
+    if (isMin) result.priceMin = value;
     else result.priceMax = value;
   }
   if (!error && result.priceMin !== null && result.priceMax !== null && result.priceMin > result.priceMax) {
@@ -406,7 +439,7 @@ function sameFilters(a, catalog) {
 }
 
 function applyFromForm(view, form, cb, onlyIfChanged = false) {
-  const values = readFilterForm(form);
+  const values = readFilterForm(form, view.state && view.state.catalog, view.state && view.state.money);
   if (!values) return;
   if (onlyIfChanged && view.state && sameFilters(values, view.state.catalog)) return;
   cb('onApplyFilters', values);
@@ -416,18 +449,18 @@ function openFiltersDialog(view) {
   const catalog = view.state.catalog;
   const category = getCategory(catalog.category);
   // черновик: открываем с текущими применёнными значениями
-  renderFilterFields(view.dialogForm, catalog.options, 'dlg');
-  fillFilterFields(view.dialogForm, catalog, false);
+  renderFilterFields(view.dialogForm, catalog.options, 'dlg', view.state.money);
+  fillFilterFields(view.dialogForm, catalog, false, view.state.money);
   view.dialogNote.textContent = category ? `Выбрана категория: ${category.title.toLowerCase()}` : '';
   view.dialog.showModal();
 }
 
 function resetDraft(view) {
-  fillFilterFields(view.dialogForm, { brands: [], specs: {}, priceMin: null, priceMax: null }, false);
+  fillFilterFields(view.dialogForm, { brands: [], specs: {}, priceMin: null, priceMax: null }, false, view.state.money);
 }
 
 function applyDialog(view, cb) {
-  const values = readFilterForm(view.dialogForm);
+  const values = readFilterForm(view.dialogForm, view.state.catalog, view.state.money);
   if (!values) {
     const invalid = view.dialogForm.querySelector('[aria-invalid="true"]');
     if (invalid) invalid.focus();
@@ -437,21 +470,27 @@ function applyDialog(view, cb) {
   cb('onApplyFilters', values);
 }
 
-function updateSidebar(view, catalog) {
+function updateSidebar(view, catalog, money) {
   const options = catalog.options;
   // поля перерисовываем только при смене категории/набора значений
   const key = options ? JSON.stringify([catalog.category, options.brands, options.specs]) : view.fieldsKey;
   if (key !== view.fieldsKey || !view.fieldsKey) {
     const focused = document.activeElement;
     const focusId = view.sidebarForm.contains(focused) ? focused.id : null;
-    renderFilterFields(view.sidebarForm, options, 'side');
+    renderFilterFields(view.sidebarForm, options, 'side', money);
     view.fieldsKey = key || 'empty';
     if (focusId) {
       const again = document.getElementById(focusId);
       if (again) again.focus();
     }
   }
-  fillFilterFields(view.sidebarForm, catalog, true);
+  // при смене валюты пересчитываем и поле в фокусе, иначе в нём останется старая сумма
+  const currency = shownCurrency(money);
+  const currencyChanged = view.fieldsCurrency !== currency;
+  view.fieldsCurrency = currency;
+  const legend = view.sidebarForm.querySelector('.filter-price-legend');
+  if (legend) legend.textContent = priceLegend(money);
+  fillFilterFields(view.sidebarForm, catalog, !currencyChanged, money);
 
   const active = countActiveFilters(catalog);
   view.sidebarReset.hidden = active === 0;
@@ -467,7 +506,34 @@ function getCardLabel(product, callbacks) {
   return { inBuild, label };
 }
 
-function renderCard(product, { inBuild, label }) {
+// Число отзывов с одним знаком через запятую: 4.5 -> '4,5'
+function formatRating(value) {
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function getCardRating(product, callbacks) {
+  const rating = typeof callbacks.getRating === 'function' ? callbacks.getRating(product.id) : null;
+  return rating && rating.count > 0 && Number.isFinite(rating.average) ? rating : { average: null, count: 0 };
+}
+
+function shopsCount(product) {
+  if (product.popularity && Number.isFinite(product.popularity.offers)) return product.popularity.offers;
+  return Array.isArray(product.offers) ? product.offers.length : 0;
+}
+
+function renderRating(rating) {
+  if (!rating.count) return el('p', 'rating rating-empty product-card-rating', 'Нет отзывов');
+  const line = el('p', 'rating product-card-rating');
+  const text = formatRating(rating.average);
+  const stars = el('span', 'stars');
+  stars.style.setProperty('--rating', String(rating.average));
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `Оценка ${text} из 5`);
+  line.append(stars, el('span', '', `${text} · ${rating.count} ${pluralRu(rating.count, ['отзыв', 'отзыва', 'отзывов'])}`));
+  return line;
+}
+
+function renderCard(product, { inBuild, label, rating }, money) {
   const item = el('li', 'product-card-item');
   const card = el('article', 'product-card');
   card.dataset.id = product.id;
@@ -476,6 +542,7 @@ function renderCard(product, { inBuild, label }) {
   photo.dataset.action = 'details';
   const { img, art } = createProductImage(product);
   photo.append(img);
+  photo.classList.toggle('is-placeholder', art.isPlaceholder);
   if (art.isPlaceholder) {
     // alt уже говорит об отсутствии фото, подпись дублирует его для зрячих
     const note = el('span', 'product-card-nophoto', 'Фото отсутствует');
@@ -494,13 +561,21 @@ function renderCard(product, { inBuild, label }) {
   const specs = getCardSpecs(product);
   if (specs.length) body.append(el('p', 'product-card-specs', specs.join(' · ')));
 
+  const meta = el('div', 'product-card-meta');
+  meta.append(renderRating(rating));
+  const shops = shopsCount(product);
+  if (shops > 0) {
+    meta.append(el('p', 'product-card-shops', `В ${shops} ${pluralRu(shops, ['магазине', 'магазинах', 'магазинах'])}`));
+  }
+  body.append(meta);
+
   const price = el('p', 'product-card-price');
   if (product.priceMinor === null || product.priceMinor === undefined) {
     price.classList.add('is-unknown');
     price.textContent = 'Цена не указана';
   } else {
     if (product.priceKind === 'from') price.append(el('span', 'product-card-from', 'от '));
-    price.append(document.createTextNode(formatMoney(product.priceMinor, product.currency)));
+    price.append(document.createTextNode(formatPrice(product.priceMinor, money)));
   }
   body.append(price);
 
@@ -521,7 +596,7 @@ function renderCard(product, { inBuild, label }) {
     cta.classList.add('btn-primary');
     cta.innerHTML = icon(label.startsWith('Заменить') ? 'refresh' : 'plus');
   }
-  cta.append(el('span', '', label));
+  cta.append(el('span', 'product-card-cta-text', label));
   cta.append(el('span', 'visually-hidden', `: ${product.name}`));
   actions.append(more, cta);
   body.append(actions);
@@ -531,10 +606,15 @@ function renderCard(product, { inBuild, label }) {
   return item;
 }
 
-function updateGrid(view, catalog, callbacks) {
+function updateGrid(view, catalog, callbacks, money) {
   const items = catalog.items || [];
-  const labels = items.map((product) => getCardLabel(product, callbacks));
-  const key = items.map((product, i) => `${product.id}|${labels[i].label}|${product.priceMinor}`).join('\n');
+  const labels = items.map((product) => ({ ...getCardLabel(product, callbacks), rating: getCardRating(product, callbacks) }));
+  const key =
+    moneyKey(money) +
+    '\n' +
+    items
+      .map((product, i) => `${product.id}|${labels[i].label}|${product.priceMinor}|${labels[i].rating.average}|${labels[i].rating.count}`)
+      .join('\n');
   if (key === view.gridKey) return;
   view.gridKey = key;
 
@@ -548,7 +628,7 @@ function updateGrid(view, catalog, callbacks) {
     focusAction = focused.classList.contains('product-card-cta') ? 'cta' : focused.classList.contains('product-card-more') ? 'more' : 'name';
   }
 
-  view.grid.replaceChildren(...items.map((product, i) => renderCard(product, labels[i])));
+  view.grid.replaceChildren(...items.map((product, i) => renderCard(product, labels[i], money)));
 
   if (focusId) {
     const card = [...view.grid.querySelectorAll('.product-card')].find((node) => node.dataset.id === focusId);
@@ -620,7 +700,7 @@ function updateStatus(view, catalog) {
 
 // ---------- полоса сборки ----------
 
-function updateBuildBar(view, build) {
+function updateBuildBar(view, build, money) {
   const slots = (build && build.slots) || {};
   let count = 0;
   let unknown = 0;
@@ -632,19 +712,18 @@ function updateBuildBar(view, build) {
     if (Number.isFinite(part.priceMinor)) total += part.priceMinor;
     else unknown += 1;
   }
-  const currency = (build && build.currency) || 'GBP';
 
   if (count === 0) {
     view.buildTotal.textContent = 'В сборке пока нет деталей';
   } else {
     // если ни у одной детали нет цены, £0.00 не показываем
-    const sum = unknown === count ? 'цена не указана' : formatMoney(total, currency);
+    const sum = unknown === count ? 'цена не указана' : formatPrice(total, money);
     view.buildTotal.textContent = `${count} ${pluralRu(count, ['деталь', 'детали', 'деталей'])} · ${sum}`;
   }
 
   const sub = [];
   if (unknown) sub.push(`из них ${unknown} без цены`);
-  if (build && Number.isFinite(build.budgetMinor)) sub.push(`Бюджет ${formatMoney(build.budgetMinor, currency)}`);
+  if (build && Number.isFinite(build.budgetMinor)) sub.push(`Бюджет ${formatPrice(build.budgetMinor, money)}`);
   view.buildSub.textContent = sub.join(' · ');
   view.buildSub.hidden = sub.length === 0;
 }
@@ -674,8 +753,9 @@ export function renderCatalog(container, state, callbacks = {}) {
   }
   view.categorySelect.value = catalog.category;
 
-  view.sortSelect.value = catalog.sort || 'relevance';
-  view.sortSelect.options[0].textContent = catalog.query ? 'По релевантности' : 'По популярности';
+  view.sortSelect.value = catalog.sort || 'popular';
+  // старое или неизвестное значение показываем как «По популярности»
+  if (view.sortSelect.selectedIndex === -1) view.sortSelect.value = 'popular';
 
   const target = catalog.targetSlot ? getCategory(catalog.targetSlot) : null;
   view.replaceBox.hidden = !target;
@@ -687,10 +767,10 @@ export function renderCatalog(container, state, callbacks = {}) {
     );
   }
 
-  updateSidebar(view, catalog);
+  updateSidebar(view, catalog, state.money);
   updateStatus(view, catalog);
-  updateGrid(view, catalog, callbacks);
-  updateBuildBar(view, state.build);
+  updateGrid(view, catalog, callbacks, state.money);
+  updateBuildBar(view, state.build, state.money);
 
   view.grid.setAttribute('aria-label', category ? category.title : 'Модели');
 }
