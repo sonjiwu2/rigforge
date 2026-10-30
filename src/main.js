@@ -9,6 +9,8 @@ import { createDetailsDialog } from './details.js';
 import { createEmptyBuild, renderBuild } from './build.js';
 import { renderSaved } from './saved.js';
 import { loadAppState, persistAppState } from './storage.js';
+import { loadRates } from './currency.js';
+import { createReview, addReview, removeReview, getRatingSummary, getRatingsMap } from './reviews.js';
 import { downloadBuild, downloadAllBuilds } from './export.js';
 
 const VIEWS = ['build', 'catalog', 'saved'];
@@ -21,6 +23,13 @@ const state = {
   saved: stored.saved || [],
   currentSavedId: null,
   storageWarning: stored.warning,
+  reviews: stored.reviews || {},
+  money: {
+    currency: stored.settings?.currency || 'GBP',
+    rates: null,
+    date: null,
+    status: 'idle',
+  },
   catalog: {
     category: 'cpu',
     query: '',
@@ -28,7 +37,7 @@ const state = {
     priceMin: null,
     priceMax: null,
     specs: {},
-    sort: 'relevance',
+    sort: 'popular',
     status: 'idle',
     items: [],
     total: 0,
@@ -92,7 +101,12 @@ function nextBuildName() {
 }
 
 function save() {
-  const ok = persistAppState({ build: state.build, saved: state.saved });
+  const ok = persistAppState({
+    build: state.build,
+    saved: state.saved,
+    reviews: state.reviews,
+    settings: { currency: state.money.currency },
+  });
   if (!ok && !state.storageWarning) {
     state.storageWarning = 'Хранилище браузера недоступно — сборки не сохранятся после закрытия вкладки';
   }
@@ -257,7 +271,7 @@ function saveCurrentBuild() {
   } else {
     announce('Не удалось сохранить сборку. Скачайте список, чтобы не потерять его', {
       actionLabel: 'Скачать',
-      onAction: () => downloadBuild(state.build),
+      onAction: () => downloadBuild(state.build, state.money),
     });
   }
   render();
@@ -318,10 +332,107 @@ function deleteSaved(id) {
   });
 }
 
+// ---------- отзывы ----------
+
+function getRating(productId) {
+  return getRatingSummary(state.reviews, productId);
+}
+
+function onAddReview(productId, data) {
+  let review;
+  try {
+    review = createReview(data);
+  } catch (error) {
+    announce(error.message);
+    return false;
+  }
+  state.reviews = addReview(state.reviews, productId, review);
+  save();
+  afterReviewsChange();
+  announce('Отзыв добавлен');
+  return true;
+}
+
+function onDeleteReview(productId, reviewId) {
+  state.reviews = removeReview(state.reviews, productId, reviewId);
+  save();
+  afterReviewsChange();
+  announce('Отзыв удалён');
+}
+
+// от отзывов зависит порядок при сортировке по оценке и популярности
+function afterReviewsChange() {
+  if (catalogStarted && state.catalog.status !== 'error') runCatalogQuery();
+  else render();
+}
+
+// ---------- валюта ----------
+
+const currencySelect = document.querySelector('#currency-select');
+const rateNote = document.querySelector('#rate-note');
+
+function formatRateDate(date) {
+  const [year, month, day] = String(date).split('-');
+  return day && month ? `${day}.${month}.${year}` : date;
+}
+
+function updateRateNote() {
+  if (!rateNote) return;
+  const money = state.money;
+  if (money.currency === 'GBP') rateNote.textContent = '';
+  else if (money.status === 'loading') rateNote.textContent = 'Загружаем курс…';
+  else if (money.status === 'error') rateNote.textContent = 'Курс недоступен, цены в фунтах';
+  else if (money.date) rateNote.textContent = 'Курс на ' + formatRateDate(money.date);
+}
+
+async function loadMoneyRates() {
+  if (state.money.status === 'loading' || state.money.status === 'ready') return;
+  state.money.status = 'loading';
+  updateRateNote();
+  try {
+    const result = await loadRates();
+    state.money.rates = result.rates;
+    state.money.date = result.date;
+    state.money.status = 'ready';
+  } catch (error) {
+    state.money.status = 'error';
+    if (state.money.currency !== 'GBP') announce(error.message || 'Не удалось загрузить курсы валют');
+  }
+  render();
+}
+
+if (currencySelect) {
+  currencySelect.value = state.money.currency;
+  currencySelect.addEventListener('change', () => {
+    state.money.currency = currencySelect.value;
+    save();
+    if (state.money.status === 'error') state.money.status = 'idle';
+    loadMoneyRates();
+    render();
+  });
+}
+
+// У старых сохранённых деталей могло не быть фото — дополняем из свежих данных каталога
+function refreshSnapshots(items) {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  let changed = false;
+  const builds = [state.build, ...state.saved];
+  for (const build of builds) {
+    for (const [slotId, snapshot] of Object.entries(build.slots)) {
+      const fresh = snapshot && byId.get(snapshot.id);
+      if (fresh && fresh.imageUrl && !snapshot.imageUrl) {
+        build.slots[slotId] = { ...snapshot, imageUrl: fresh.imageUrl };
+        changed = true;
+      }
+    }
+  }
+  if (changed) save();
+}
+
 // ---------- каталог ----------
 
 function resetCatalogFilters() {
-  Object.assign(state.catalog, { brands: [], priceMin: null, priceMax: null, specs: {}, sort: 'relevance' });
+  Object.assign(state.catalog, { brands: [], priceMin: null, priceMax: null, specs: {}, sort: 'popular' });
 }
 
 async function runCatalogQuery() {
@@ -347,12 +458,14 @@ async function runCatalogQuery() {
         priceMax: catalog.priceMax,
         specs: catalog.specs,
         sort: catalog.sort,
+        ratings: getRatingsMap(state.reviews),
       },
       { signal: controller.signal },
     );
     if (requestId !== catalogRequestId) return;
 
     catalog.options = getFilterOptions(all.items, catalog.category);
+    refreshSnapshots(all.items);
     catalog.items = result.items;
     catalog.total = result.total;
     catalog.status = result.items.length ? 'success' : 'empty';
@@ -409,6 +522,7 @@ const catalogCallbacks = {
   },
   isInBuild,
   getAddLabel,
+  getRating,
 };
 
 const buildCallbacks = {
@@ -426,7 +540,7 @@ const buildCallbacks = {
   onOpenDetails: (snapshot, trigger) => details.open(snapshot, trigger),
   onSave: saveCurrentBuild,
   onNewBuild: startNewBuild,
-  onDownload: () => downloadBuild(state.build),
+  onDownload: () => downloadBuild(state.build, state.money),
   getArtwork: getProductArtwork,
 };
 
@@ -437,9 +551,9 @@ const savedCallbacks = {
   onDeleteSaved: deleteSaved,
   onDownloadSaved(id) {
     const saved = state.saved.find((item) => item.id === id);
-    if (saved) downloadBuild(saved);
+    if (saved) downloadBuild(saved, state.money);
   },
-  onDownloadAll: () => downloadAllBuilds(state.saved),
+  onDownloadAll: () => downloadAllBuilds(state.saved, state.money),
   onNewBuild: startNewBuild,
   onGoToBuild: goToBuild,
   getArtwork: getProductArtwork,
@@ -448,6 +562,11 @@ const savedCallbacks = {
 const details = createDetailsDialog({
   getAction,
   onAction: addProduct,
+  getMoney: () => state.money,
+  getReviews: (productId) => state.reviews[productId] || [],
+  getRating,
+  onAddReview,
+  onDeleteReview,
   onGoToBuild() {
     details.close();
     goToBuild();
@@ -468,6 +587,7 @@ function render() {
   if (catalogStarted) renderCatalog(containers.catalog, state, catalogCallbacks);
   renderSaved(containers.saved, state, savedCallbacks);
   details.refresh();
+  updateRateNote();
 }
 
 function onRoute() {
@@ -481,5 +601,6 @@ function onRoute() {
 
 window.addEventListener('hashchange', onRoute);
 onRoute();
+loadMoneyRates();
 
 if (state.storageWarning) announce(state.storageWarning);
