@@ -174,7 +174,7 @@ export const CATALOG_SLUGS = {
     'seagate-ironwolf-4tb-5400rpm-202mb-s-3-5-inch-sata-nas-hard-drive-st4000vn006',
     'seagate-ironwolf-pro-4tb-7200rpm-128mb-sata-6b-s-3-5-hard-drive-st4000nt001',
     'wd-10tb-blue-3-5-sata-hdd-hard-drive',
-    '10tb-toshiba-mg10ada10te-3-5-enterprise-hdd-7200rpm',
+    'seagate-ironwolf-8tb-7200rpm-210mb-s-3-5-inch-sata-nas-hard-drive-st8000vn004',
   ],
   psu: [
     'gamemax-rpg-rampage-600w-80-plus-bronze-certified-atx-power-supply-unit',

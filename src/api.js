@@ -121,6 +121,34 @@ export async function fetchCompare(slugs, categoryId, { signal } = {}) {
   return normalizeCompareResponse(json, categoryId);
 }
 
+// API не принимает один slug, поэтому к одиночному добавляем любой другой из категории
+function withPartner(slug, slugs, skip) {
+  const partner = slugs.find((other) => other !== slug && !skip.includes(other));
+  return partner ? [slug, partner] : [slug];
+}
+
+// Если модель пропала с VantaSpec, compare отвечает 404 на весь запрос.
+// Тогда запрашиваем модели из этой пачки по одной, чтобы не терять остальные.
+async function fetchChunk(chunk, slugs, categoryId) {
+  const request = chunk.length === 1 ? withPartner(chunk[0], slugs, []) : chunk;
+  try {
+    return await fetchCompare(request, categoryId);
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
+  }
+
+  const found = [];
+  for (const slug of chunk) {
+    try {
+      const items = await fetchCompare(withPartner(slug, slugs, chunk), categoryId);
+      found.push(...items.filter((item) => item.slug === slug));
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404) throw err;
+    }
+  }
+  return found;
+}
+
 async function fetchCategory(categoryId) {
   const slugs = CATALOG_SLUGS[categoryId] || [];
   const chunks = [];
@@ -128,13 +156,7 @@ async function fetchCategory(categoryId) {
     chunks.push(slugs.slice(i, i + CHUNK_SIZE));
   }
 
-  const results = await Promise.all(
-    chunks.map((chunk) => {
-      // API не принимает один slug, добавляем любой другой из категории
-      const request = chunk.length === 1 ? [chunk[0], slugs.find((slug) => slug !== chunk[0])] : chunk;
-      return fetchCompare(request.filter(Boolean), categoryId);
-    })
-  );
+  const results = await Promise.all(chunks.map((chunk) => fetchChunk(chunk, slugs, categoryId)));
 
   const bySlug = new Map();
   for (const items of results) {
