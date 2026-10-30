@@ -87,13 +87,66 @@ body {
   text-decoration: none;
 }
 
-.currency {
+/* Переключатель валюты: на телефоне справа от логотипа, подпись курса под ним */
+.currency-box {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  justify-self: end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.currency-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 36px;
   margin: 0;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--rf-control-border);
+  border-radius: var(--rf-radius-control);
+  background-color: var(--rf-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23182321' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px 16px;
+  color: var(--rf-text);
   font-size: var(--rf-secondary);
   line-height: 20px;
+  font-weight: 600;
+  font-variant-numeric: lining-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--rf-duration) var(--rf-easing);
+}
+
+.currency-select:hover {
+  border-color: var(--rf-text);
+}
+
+.currency-select:focus-visible {
+  border-color: var(--rf-text);
+  outline-offset: 2px;
+}
+
+.currency-select:disabled {
+  border-color: var(--rf-disabled-surface);
+  background-color: var(--rf-disabled-surface);
+  color: var(--rf-disabled-text);
+  cursor: not-allowed;
+}
+
+/* «Курс на 30.10.2026» — текст ставит main.js */
+.rate-note {
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 500;
   color: var(--rf-text-secondary);
   white-space: nowrap;
+}
+
+.rate-note:empty {
+  display: none;
 }
 
 .main-nav {
@@ -182,7 +235,8 @@ body {
     padding: 0 8px;
   }
 
-  .currency {
+  .currency-box {
+    align-self: center;
     margin-left: auto;
     padding-left: 16px;
   }
@@ -191,6 +245,22 @@ body {
 @media (min-width: 1024px) {
   .logo {
     margin-right: 76px;
+  }
+
+  /* на широком экране подпись курса слева от списка */
+  .currency-box {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .currency-select {
+    min-height: 40px;
+  }
+
+  .rate-note {
+    font-size: 13px;
+    line-height: 18px;
   }
 
   .main-nav {
