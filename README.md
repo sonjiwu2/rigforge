@@ -90,17 +90,4 @@ docs/architecture.md          как устроено приложение
 - Дмитрий Данилов ([Zvoook](https://github.com/Zvoook)) — каталог и окно с подробностями
 - Дмитрий Новиков ([sonjiwu2](https://github.com/sonjiwu2)) — сборка, бюджет, сохранение и экспорт
 
-## Лицензии
-
-- Данные о ценах и характеристиках: VantaSpec (vantaspec.com).
-- Описание серий: Wikipedia, CC BY-SA 4.0.
-- Шрифты Onest и Unbounded — SIL Open Font License 1.1.
-- Иконки и заглушки — свои, CC0.
-- Фото товаров — из VantaSpec (права у производителей), показываются по ссылке и в репозитории не хранятся.
-- Курсы валют: Currency-api.
-- Фото процессоров с Wikimedia Commons (уменьшены и переведены в WebP):
-  - AMD Ryzen 7 7800X3D — FritzchensFritz, CC0 1.0;
-  - AMD Ryzen 5 7600 — Smial, Free Art License 1.3;
-  - AMD Ryzen 5 5600X — Phiarc, CC BY-SA 4.0.
-
-  Ссылки на оригиналы есть в окне подробностей («Фото и лицензия»), тексты лицензий — в `public/licenses/`.
+Ссылки на оригиналы есть в окне подробностей («Фото и лицензия»), тексты лицензий — в `public/licenses/`.
